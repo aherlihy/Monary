@@ -66,12 +66,29 @@ typedef struct monary_column_data
     unsigned int num_columns;
     unsigned int num_rows;
     monary_column_item* columns;
+    unsigned int hash_size;
+    int* hash;
 } monary_column_data;
 
 typedef struct monary_cursor {
     mongo_cursor* mcursor;
     monary_column_data* coldata;
 } monary_cursor;
+
+
+// djb2 hash algorithm
+// see: http://www.cse.yorku.ca/~oz/hash.html
+unsigned long monary_str_hash(const unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while (c = *str++) {
+        hash = ((hash << 5) + hash) + c;  // hash * 33 + c
+    }
+
+    return hash;
+}
 
 monary_column_data* monary_alloc_column_data(unsigned int num_columns, unsigned int num_rows)
 {
@@ -81,6 +98,12 @@ monary_column_data* monary_alloc_column_data(unsigned int num_columns, unsigned 
     result->num_columns = num_columns;
     result->num_rows = num_rows;
     result->columns = columns;
+
+    // populate the hash table with all -1 values
+    result->hash_size = num_columns * 5;
+    result->hash = (int*) malloc(result->hash_size * sizeof(int));
+    for(int i = 0; i < result->hash_size; i++) { result->hash[i] = -1; }
+    
     return result;
 }
 
@@ -91,6 +114,7 @@ int monary_free_column_data(monary_column_data* coldata)
         monary_column_item* col = coldata->columns + i;
         if(col->field != NULL) { free(col->field); }
     }
+    free(coldata->hash);
     free(coldata->columns);
     free(coldata);
     return 1;
@@ -122,6 +146,14 @@ int monary_set_column_item(monary_column_data* coldata,
     col->type_arg = type_arg;
     col->storage = storage;
     col->mask = mask;
+
+    // insert field into hash table
+    unsigned long startpos = monary_str_hash(field) % coldata->hash_size;
+    unsigned int pos = startpos;
+    while(coldata->hash[pos] != -1) {
+        pos = (pos + 1) % coldata->hash_size;
+    }
+    coldata->hash[pos] = colnum;
     
     return 1;
 }
