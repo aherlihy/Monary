@@ -20,16 +20,18 @@ CMONARY_DIR = "cmonary/"
 CMONGO_SRC = "mongodb-mongo-c-driver-7afb6e4/src/"
 compiler = new_compiler()
 
+CARGS = ["--std=c99", "-fPIC"]
+
 def build_cmongo():
     import glob
     CMONGO_UNITS = glob.glob(CMONGO_SRC + "*.c")
     CMONGO_OBJECTS = [ f[:-2] + ".o" for f in CMONGO_UNITS ]
-    compiler.compile(CMONGO_UNITS, extra_preargs=["--std=c99"], include_dirs=[CMONGO_SRC])
+    compiler.compile(CMONGO_UNITS, extra_preargs=CARGS, include_dirs=[CMONGO_SRC])
     compiler.create_static_lib(CMONGO_OBJECTS, "mongo", CMONGO_SRC)
 
 def build_cmonary():
     compiler.compile([CMONARY_DIR + "cmonary.c"],
-                        extra_preargs=["--std=c99", "-O3"],
+                        extra_preargs=CARGS + ["-O3"],
                         include_dirs=[CMONGO_SRC])
     compiler.link_shared_lib([CMONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"], "cmonary", output_dir="monary")
 
