@@ -2,4 +2,7 @@ syntax: glob
 
 *.pyc
 *.o
+*.a
+*.so
 *.dylib
+build/*

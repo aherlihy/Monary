@@ -1,8 +1,19 @@
+import os.path
+
 from ctypes import *
 import numpy
 from pymongo.helpers import bson
 
-cmonary = CDLL("libcmonary.dylib")
+def load_cmonary_lib():
+    global cmonary
+    thismodule = __file__
+    abspath = os.path.abspath(thismodule)
+    moduledir = list(os.path.split(abspath))[:-1]
+    cmonaryfile = os.path.join(*(moduledir + ["libcmonary.so"]))
+    cmonary = CDLL(cmonaryfile)
+
+cmonary = None
+load_cmonary_lib()
 
 FUNCDEFS = [
     ("monary_connect", [c_char_p, c_int], c_void_p),
