@@ -106,16 +106,28 @@ class Monary(object):
         return coldata, colarrays
 
     def count(self, db, coll, query=None):
-        """Count the number of records that will be returned by the given query.  This
-           may be used to allocate the storage arrays.
-           
-           """
+        """Count the number of records that will be returned by the given query."""
         
         query = make_bson(query)
         return cmonary.monary_query_count(self._connection, db, coll, query)
 
     def query(self, db, coll, query, fields, types, limit=0, offset=0,
               do_count=True, select_fields=False):
+        """Performs an array query.
+        
+           :param db: name of database
+           :param coll: name of the collection to be queried
+           :param query: dictionary (JSON) of Mongo query parameters
+           :param fields: list of fields to be extracted from each record
+           :param types: corresponding list of field types
+           :param limit: limit number of records (and size of arrays)
+           :param offset: use offset
+           :param bool do_count: count items before allocation (otherwise use limit)
+           :param bool select_fields: select exact fields from database (performance/bandwidth tradeoff)
+
+           :returns: list of numpy.arrays, corresponding to the requested fields
+        """
+
         query = make_bson(query)
         if not do_count and limit > 0:
             count = limit
@@ -143,9 +155,16 @@ class Monary(object):
         return colarrays
 
     def close(self):
+        """Closes the current connection, if any."""
         if self._connection is not None:
             cmonary.monary_disconnect(self._connection)
             self._connection = None
+        
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, *args, **kw):
+        self.close()
         
     def __del__(self):
         self.close()
