@@ -42,6 +42,8 @@ setup(
     name = "Monary",
     version = "0.1",
     packages = ["monary"],
+    requires = ["pymongo", "numpy"],
+    
     package_dir = {"monary": "monary"},
     package_data = {"monary": ["libcmonary.so"]},
 
