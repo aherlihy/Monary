@@ -1,15 +1,21 @@
 from monary import Monary
 import numpy
 
-monary = Monary("127.0.0.1")
-arrays = monary.query(
-    "monary_test",                  # database name
-    "collection",                   # collection name
-    {},                             # query spec
-    ["x1", "x2", "x3", "x4", "x5"], # field names
-    ["float64"] * 5                 # field types
-)
-monary.close()
+from profile import profile
 
-for array in arrays:                # prove that we did something...
-    print numpy.mean(array)
+def do_monary_query():
+    with Monary("127.0.0.1") as m:
+        with profile("monary query"):
+            arrays = m.query(
+                "monary_test",                  # database name
+                "collection",                   # collection name
+                {},                             # query spec
+                ["x1", "x2", "x3", "x4", "x5"], # field names
+                ["float64"] * 5                 # field types
+            )
+
+    for array in arrays:                # prove that we did something...
+        print numpy.mean(array)
+
+if __name__ == '__main__':
+    do_monary_query()
