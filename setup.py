@@ -36,7 +36,7 @@ class BuildCMonary(Command):
         compiler.compile([MONARY_DIR + "cmonary.c"],
                          extra_preargs=CFLAGS,
                          include_dirs=[CMONGO_SRC])
-        compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"], "cmonary")
+        compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"], "cmonary", "monary")
 
 setup(
     name = "Monary",
