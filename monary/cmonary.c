@@ -1,3 +1,6 @@
+// Monary - Copyright 2011 David J. C. Beach
+// Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
