@@ -47,9 +47,13 @@ _decorate_cmonary_functions()
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
     "id": (1, "|S12"),
-    "int32": (2, numpy.int32),
-    "float64": (3, numpy.float64),
-    "bool": (4, numpy.bool),
+    "bool": (2, numpy.bool),
+    "int8": (3, numpy.int8),
+    "int16": (4, numpy.int16),
+    "int32": (5, numpy.int32),
+    "int64": (6, numpy.int64),
+    "float32": (7, numpy.float32),
+    "float64": (8, numpy.float64),
 }
 
 def make_bson(obj):
