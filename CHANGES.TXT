@@ -1,0 +1,15 @@
+
+Version 0.1.1
+-------------
+
+    * Bugfix release for issue with ObjectIDs containing NULL bytes
+      (ObjectIDs now use a 12-byte 'void' array type in numeric python.)
+      
+    * Support for int8, int16, int64, and float32 column types.
+    
+    * Basic tests for all column types (requires nosetests).
+
+Version 0.1
+-----------
+
+    * Initial Release
