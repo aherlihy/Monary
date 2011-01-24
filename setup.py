@@ -50,7 +50,7 @@ class BuildCMonary(Command):
 
 setup(
     name = "Monary",
-    version = "0.1",
+    version = "0.1.1",
     packages = ["monary"],
     requires = ["pymongo", "numpy"],
     

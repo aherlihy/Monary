@@ -57,6 +57,7 @@ enum {
     NUM_TYPES = 9,
 };
 
+typedef bson_oid_t OBJECTID;
 typedef char BOOL;
 typedef char INT8;
 typedef short INT16;
@@ -175,9 +176,11 @@ int monary_set_column_item(monary_column_data* coldata,
 
 int monary_load_objectid_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
     if(type == bson_oid) {
-        bson_oid_t* oid = bson_iterator_oid(bsonit);
-        char* oidloc = ((char*) citem->storage) + (idx * 12);
-        memcpy(oidloc, oid, 12);
+        OBJECTID* oid = bson_iterator_oid(bsonit);
+        OBJECTID* oidloc = ((OBJECTID*) citem->storage) + idx;
+        oidloc->ints[0] = oid->ints[0];
+        oidloc->ints[1] = oid->ints[1];
+        oidloc->ints[2] = oid->ints[2];
         return 1;
     } else {
         return 0;
