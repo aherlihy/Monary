@@ -46,7 +46,7 @@ _decorate_cmonary_functions()
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id": (1, "|S12"),
+    "id": (1, "|V12"),
     "bool": (2, numpy.bool),
     "int8": (3, numpy.int8),
     "int16": (4, numpy.int16),
@@ -57,11 +57,10 @@ MONARY_TYPES = {
 }
 
 def make_bson(obj):
-    """Given a JSON dictionary, returns a BSON string.
+    """Given a Python (JSON compatible) dictionary, returns a BSON string.
     
-       (This hijacks the JSON -> BSON conversion code from pymongo, which is needed for
-       converting queries to BSON.  Perhaps this dependency can be removed in a later
-       version.)
+       (This hijacks the Python -> BSON conversion code from pymongo, which is needed for
+       converting queries.  Perhaps this dependency can be removed in a later version.)
     """
     if obj is None:
         obj = { }
@@ -124,7 +123,7 @@ class Monary(object):
         
            :param db: name of database
            :param coll: name of the collection to be queried
-           :param query: dictionary (JSON) of Mongo query parameters
+           :param query: dictionary of Mongo query parameters
            :param fields: list of fields to be extracted from each record
            :param types: corresponding list of field types
            :param limit: limit number of records (and size of arrays)
