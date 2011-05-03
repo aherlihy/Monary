@@ -8,6 +8,8 @@
 #include "mongo.h"
 #include "bson.h"
 
+#define NDEBUG
+
 #ifndef NDEBUG
 #define DEBUG(format, ...) \
     fprintf(stderr, "[DEBUG] %s:%i " format "\n", __FILE__, __LINE__, ##__VA_ARGS__)
@@ -39,6 +41,11 @@ mongo_connection* monary_connect(const char* host, int port)
     }
 }
 
+int monary_authenticate(mongo_connection* connection, const char* db, const char* user, const char* pass)
+{
+    return mongo_cmd_authenticate(connection, db, user, pass);
+}
+
 void monary_disconnect(mongo_connection* connection)
 {
     mongo_destroy(connection);
@@ -54,7 +61,8 @@ enum {
     TYPE_INT64 = 6,
     TYPE_FLOAT32 = 7,
     TYPE_FLOAT64 = 8,
-    NUM_TYPES = 9,
+    TYPE_DATE = 9,
+    NUM_TYPES = 10,
 };
 
 typedef bson_oid_t OBJECTID;
@@ -253,6 +261,16 @@ int monary_load_float64_value(bson_iterator* bsonit, bson_type type, monary_colu
     }
 }
 
+int monary_load_date_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+    if(type == bson_date) {
+        bson_date_t value = bson_iterator_date(bsonit);
+        ((INT64*) citem->storage)[idx] = value;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 int monary_bson_to_arrays(monary_column_data* coldata,
                           unsigned int row,
                           bson* bson_data)
@@ -291,6 +309,9 @@ int monary_bson_to_arrays(monary_column_data* coldata,
                 break;
                 case TYPE_FLOAT64:
                 success = monary_load_float64_value(&bsonit, found_type, col, row);
+                break;
+                case TYPE_DATE:
+                success = monary_load_date_value(&bsonit, found_type, col, row);
                 break;
             }
         }
