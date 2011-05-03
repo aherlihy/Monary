@@ -5,7 +5,7 @@ import os.path
 from ctypes import *
 
 import numpy
-from pymongo.helpers import bson
+import bson
 
 cmonary = None
 
@@ -20,26 +20,36 @@ def _load_cmonary_lib():
 
 _load_cmonary_lib()
 
+CTYPE_CODES = {
+    "P": c_void_p,    # pointer
+    "S": c_char_p,    # string
+    "I": c_int,       # int
+    "U": c_uint,      # unsigned int
+    "L": c_long,      # long
+    "0": None,        # None/void
+}
+
 # List of C function definitions from the cmonary library
 FUNCDEFS = [
-#   FUNCTION NAME      ARG TYPES                          RETURN TYPE
-    ("monary_connect", [c_char_p, c_int],                 c_void_p),
-    ("monary_disconnect", [c_void_p],                     None),
-    ("monary_alloc_column_data", [c_uint, c_uint],        c_void_p),
-    ("monary_free_column_data", [c_void_p],               c_int),
-    ("monary_set_column_item", [c_void_p, c_uint, c_char_p, c_uint, c_uint, c_void_p, c_void_p], c_int),
-    ("monary_query_count", [c_void_p, c_char_p, c_char_p, c_char_p], c_long),
-    ("monary_init_query", [c_void_p, c_char_p, c_char_p, c_int, c_int, c_void_p, c_int], c_void_p),
-    ("monary_load_query", [c_void_p],                     c_int),
-    ("monary_close_query", [c_void_p],                    None),
+    "monary_connect:SI:P",
+    "monary_authenticate:PSSS:I",
+    "monary_disconnect:P:0",
+    "monary_alloc_column_data:UU:P",
+    "monary_free_column_data:P:I",
+    "monary_set_column_item:PUSUUPP:I",
+    "monary_query_count:PSSS:L",
+    "monary_init_query:PSSIIPI:P",
+    "monary_load_query:P:I",
+    "monary_close_query:P:0",
 ]
 
 def _decorate_cmonary_functions():
     """Decorates each of the cmonary functions with their argument and result types."""
-    for name, argtypes, restype in FUNCDEFS:
+    for funcdef in FUNCDEFS:
+        name, argtypes, restype = funcdef.split(":")
         func = getattr(cmonary, name)
-        func.argtypes = argtypes
-        func.restype = restype
+        func.argtypes = [ CTYPE_CODES[c] for c in argtypes ]
+        func.restype = CTYPE_CODES[restype]
 
 _decorate_cmonary_functions()
 
@@ -54,6 +64,7 @@ MONARY_TYPES = {
     "int64": (6, numpy.int64),
     "float32": (7, numpy.float32),
     "float64": (8, numpy.float64),
+    "date": (9, numpy.int64),
 }
 
 def make_bson(obj):
@@ -72,27 +83,62 @@ class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
     
     def __init__(self, host=None, port=0):
-        """Initialize this connection with the given host and port."""
+        """Initialize this connection with the given host and port.
+        
+           :param host: host name (or IP) to connect
+           :param port: port number of running MongoDB service on host
+        """
         self._cmonary = cmonary
         self._connection = None
         self.connect(host, port)
             
     def connect(self, host=None, port=0):
-        """Connects to the tiven host and port."""
+        """Connects to the given host and port.
+
+           :param host: host name (or IP) to connect
+           :param port: port number of running MongoDB service on host
+        """
         if self._connection is not None:
             self.close()
         self._connection = cmonary.monary_connect(host, port)
+
+    def authenticate(self, db, user, passwd):
+        """Authenticate this Monary connection for a given database with the provided
+           username and password.
+        
+            :param db: name of database
+            :param user: name of authenticating user
+            :param passwd: password for user
+        """
+        
+        assert self._connection is not None, "Not connected"
+        result = cmonary.monary_authenticate(self._connection, db, user, passwd)
+        return bool(result)
 
     def _make_column_data(self, fields, types, count):
         """Builds the 'column data' structure used by the underlying cmonary code to
            populate the arrays.  This code must allocate the array objects, and provide
            their corresponding storage pointers and sizes to cmonary.
+
+           :param fields: list of field names
+           :param types: list of Monary type names
+           :param count: size of storage to be allocated
+           
+           :returns: tuple of (coldata, colarrays) where coldata is the cmonary
+                     column data storage structure, and colarrays is a list of
+                     numpy.ndarray instances
         """
+        
+        if len(fields) != len(types):
+            raise ValueError("number of fields and types do not match")
         
         numcols = len(fields)
         coldata = cmonary.monary_alloc_column_data(numcols, count)
         colarrays = [ ]
         for i, (field, typename) in enumerate(zip(fields, types)):
+            if typename not in MONARY_TYPES:
+                raise ValueError("not a valid monary type name: %s" % typename)
+            
             cmonary_type, numpy_type = MONARY_TYPES[typename]
 
             # BUG: how do we default to masking all values in the array
@@ -112,7 +158,15 @@ class Monary(object):
         return coldata, colarrays
 
     def count(self, db, coll, query=None):
-        """Count the number of records that will be returned by the given query."""
+        """Count the number of records that will be returned by the given query.
+        
+           :param db: name of database
+           :param coll: name of the collection to be queried
+           :param query: (optional) dictionary of Mongo query parameters
+           
+           :returns: the number of records
+           :rtype: int
+        """
         
         query = make_bson(query)
         return cmonary.monary_query_count(self._connection, db, coll, query)
@@ -135,6 +189,7 @@ class Monary(object):
         """
 
         query = make_bson(query)
+        
         if not do_count and limit > 0:
             count = limit
         else:
@@ -167,11 +222,14 @@ class Monary(object):
             self._connection = None
         
     def __enter__(self):
+        """Monary connections meet the ContextManager protocol."""
         return self
         
     def __exit__(self, *args, **kw):
+        """Monary connections meet the ContextManager protocol."""
         self.close()
         
     def __del__(self):
+        """Closes the Monary connection and cleans up resources."""
         self.close()
         self._cmonary = None
