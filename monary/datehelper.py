@@ -18,8 +18,10 @@ def datetime_to_mongodate(dt):
        :returns: the datetime as an integer date (represented as milliseconds since January 1, 1970)
        :rtype: int
     """
+    if not isinstance(dt, (datetime.date, datetime.datetime)):
+        raise ValueError("requires a date or datetime value")
     if dt < MONGO_DATE_EPOCH:
-        raise ValueError("cannot represent date prior to January 1, 1970")
+        raise ValueError("Mongo cannot represent date before January 1, 1970")
     return timedelta_to_mongodelta(dt - MONGO_DATE_EPOCH)
 
 def mongodelta_to_timedelta(mongodelta):
@@ -29,6 +31,10 @@ def mongodelta_to_timedelta(mongodelta):
        :returns: a timedelta instance representing the difference
        :rtype: timedelta
     """
+    try:
+        mongodelta = int(mongodelta)
+    except ValueError:
+        raise ValueError("time argument must be convertable to integer")
     secs, millis = divmod(mongodelta, 1000)
     return datetime.timedelta(seconds=secs, milliseconds=millis)
 
@@ -39,5 +45,7 @@ def timedelta_to_mongodelta(td):
        :returns: the time difference in milliseconds
        :rtype: int
     """
+    if not isinstance(td, datetime.timedelta):
+        raise ValueError, "requires a timedelta value"
     millis = (td.total_seconds() * 1000) + (td.microseconds / 1000)
     return millis
