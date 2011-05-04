@@ -1,4 +1,17 @@
 
+Version 0.1.2
+-------------
+
+    * Added support for a "date" type which populates an array of int64 values
+      from a BSON date (date value is milliseconds since Jan 1, 1970).
+
+    * Improved column tests.
+
+    * Fixed a minor bug in datehelper.mongodelta_to_timedelta(), which was not accepting
+      a numpy.int64 instance as the date value.  (Now we simply convert the incoming arg to a Python int.)
+
+    * Added strict argument checks to datehelper functions.
+
 Version 0.1.1
 -------------
 
