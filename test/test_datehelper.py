@@ -17,4 +17,3 @@ def test_datetime_to_mongo():
 def test_mongo_to_datetime():
     for dt, mongo in DATES:
         assert mongodate_to_datetime(mongo) == dt
-
