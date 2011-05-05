@@ -17,8 +17,9 @@ RECORDS = None
 def setup():
     global RECORDS
     c = get_pymongo_connection()
+    c.drop_database("monary_test") # ensure that database does not exist
     db = c.monary_test
-    db.drop_collection("test_data") # ensure that test collection does not exist
+    #db.drop_collection("test_data") # ensure that test collection does not exist
     coll = db.test_data
     records = [ ]
 
@@ -42,8 +43,9 @@ def setup():
     
 def teardown():
     c = get_pymongo_connection()
-    db = c.monary_test
-    db.drop_collection("test_data")
+    c.drop_database("monary_test")
+    #db = c.monary_test
+    #db.drop_collection("test_data")
     print "teardown complete"
 
 def get_record_values(colname):
