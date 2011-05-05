@@ -1,4 +1,11 @@
 
+Version 0.1.3
+-------------
+
+    * Added support for sorting queries and providing hints.  (See Monary.query method.)
+
+    * Added simple unit tests for Monary.authenticate.
+
 Version 0.1.2
 -------------
 
