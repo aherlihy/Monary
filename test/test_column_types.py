@@ -19,7 +19,6 @@ def setup():
     c = get_pymongo_connection()
     c.drop_database("monary_test") # ensure that database does not exist
     db = c.monary_test
-    #db.drop_collection("test_data") # ensure that test collection does not exist
     coll = db.test_data
     records = [ ]
 
@@ -44,8 +43,6 @@ def setup():
 def teardown():
     c = get_pymongo_connection()
     c.drop_database("monary_test")
-    #db = c.monary_test
-    #db.drop_collection("test_data")
     print "teardown complete"
 
 def get_record_values(colname):
@@ -53,7 +50,7 @@ def get_record_values(colname):
 
 def get_monary_column(colname, coltype):
     with get_monary_connection() as m:
-        [ column ] = m.query("monary_test", "test_data", {}, [colname], [coltype])
+        [ column ] = m.query("monary_test", "test_data", {}, [colname], [coltype], sort="sequence")
     return list(column)
 
 def check_int_column(coltype):

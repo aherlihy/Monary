@@ -3,6 +3,7 @@
 
 import os.path
 from ctypes import *
+from collections import OrderedDict
 
 import numpy
 import bson
@@ -83,6 +84,61 @@ def make_bson(obj):
     if not isinstance(obj, basestring):
         obj = bson.BSON.encode(obj)
     return obj
+
+def get_ordering_dict(obj):
+    """Converts a field/direction specification to an OrderedDict, suitable
+       for BSON encoding.
+    
+       :param obj: single field name or list of (field, direction) pairs
+       :returns: mapping representing the field/direction list
+       :rtype: OrderedDict
+    """
+    if obj is None:
+        return OrderedDict()
+    elif isinstance(obj, basestring):
+        return OrderedDict([(obj, 1)])
+    elif isinstance(obj, list):
+        return OrderedDict(obj)
+    else:
+        raise ValueError("invalid ordering: should be str or list of (column, direction) pairs")
+
+def get_plain_query(query):
+    """Composes a plain query from the given query object.
+    
+       :param dict query: query dictionary (or None)
+       :returns: BSON encoded query (byte string)
+       :rtype: str
+    """
+    if query is None:
+        query = { }
+    return make_bson(query)
+
+def get_full_query(query, sort=None, hint=None):
+    """Composes a full query from the given query object, and sort and hint clauses, if provided.
+    
+       :param dict query: query dictionary (or None)
+       :param sort: (optional) single field name or list of (field, direction) pairs
+       :param hint: (optional) single field name or list of (field, direction) pairs
+       :returns: BSON encoded query (byte string)
+       :rtype: str
+    """
+    if query is None:
+        query = { }
+
+    if sort or hint:
+        query = OrderedDict([("$query", query)])
+        if sort:
+            try:
+                query["$sort"] = get_ordering_dict(sort)
+            except ValueError:
+                raise ValueError("sort arg must be string or list of (field, direction) pairs")
+        if hint:
+            try:
+                query["$hint"] = get_ordering_dict(hint)
+            except ValueError:
+                raise ValueError("hint arg must be string or list of (field, direction) pairs")
+    
+    return make_bson(query)
 
 class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
@@ -185,7 +241,9 @@ class Monary(object):
         query = make_bson(query)
         return cmonary.monary_query_count(self._connection, db, coll, query)
 
-    def query(self, db, coll, query, fields, types, limit=0, offset=0,
+    def query(self, db, coll, query, fields, types,
+              sort=None, hint=None,
+              limit=0, offset=0,
               do_count=True, select_fields=False):
         """Performs an array query.
         
@@ -194,6 +252,8 @@ class Monary(object):
            :param query: dictionary of Mongo query parameters
            :param fields: list of fields to be extracted from each record
            :param types: corresponding list of field types
+           :param sort: (optional) single field name or list of (field, direction) pairs
+           :param hint: (optional) single field name or list of (field, direction) pairs
            :param limit: (optional) limit number of records (and size of arrays)
            :param offset: (optional) skip this many records before gathering results
            :param bool do_count: count items before allocating arrays
@@ -204,12 +264,14 @@ class Monary(object):
            :rtype: list
         """
 
-        query = make_bson(query)
+        plain_query = get_plain_query(query)
+        full_query = get_full_query(query, sort, hint)
         
         if not do_count and limit > 0:
             count = limit
         else:
-            count = self.count(db, coll, query)
+            # count() doesn't like $query/$orderby/$hint clauses, so we need to use a plain query
+            count = self.count(db, coll, plain_query)
 
         if count > limit > 0:
             count = limit
@@ -220,7 +282,7 @@ class Monary(object):
             ns = "%s.%s" % (db, coll)
             cursor = None
             try:
-                cursor = cmonary.monary_init_query(self._connection, ns, query, limit, offset,
+                cursor = cmonary.monary_init_query(self._connection, ns, full_query, limit, offset,
                                                    coldata, select_fields)
                 cmonary.monary_load_query(cursor)
             finally:
