@@ -31,6 +31,7 @@ CTYPE_CODES = {
 
 # List of C function definitions from the cmonary library
 FUNCDEFS = [
+    # format: "func_name:arg_types:return_type"
     "monary_connect:SI:P",
     "monary_authenticate:PSSS:I",
     "monary_disconnect:P:0",
@@ -72,6 +73,10 @@ def make_bson(obj):
     
        (This hijacks the Python -> BSON conversion code from pymongo, which is needed for
        converting queries.  Perhaps this dependency can be removed in a later version.)
+
+       :param obj: object to be encoded as BSON (dict, string, or None)
+       :returns: BSON encoded representation (byte string)
+       :rtype: str
     """
     if obj is None:
         obj = { }
@@ -97,10 +102,15 @@ class Monary(object):
 
            :param host: host name (or IP) to connect
            :param port: port number of running MongoDB service on host
+
+           :returns: True if connection was successful, False otherwise.
+           :rtype: bool
         """
         if self._connection is not None:
             self.close()
         self._connection = cmonary.monary_connect(host, port)
+        success = (self._connection is not None)
+        return success
 
     def authenticate(self, db, user, passwd):
         """Authenticate this Monary connection for a given database with the provided
@@ -109,6 +119,9 @@ class Monary(object):
             :param db: name of database
             :param user: name of authenticating user
             :param passwd: password for user
+            
+            :returns: True if authentication was successful, False otherwise.
+            :rtype: bool
         """
         
         assert self._connection is not None, "Not connected"
@@ -124,9 +137,10 @@ class Monary(object):
            :param types: list of Monary type names
            :param count: size of storage to be allocated
            
-           :returns: tuple of (coldata, colarrays) where coldata is the cmonary
+           :returns: (coldata, colarrays) where coldata is the cmonary
                      column data storage structure, and colarrays is a list of
                      numpy.ndarray instances
+           :rtype: tuple
         """
         
         if len(fields) != len(types):
@@ -180,12 +194,14 @@ class Monary(object):
            :param query: dictionary of Mongo query parameters
            :param fields: list of fields to be extracted from each record
            :param types: corresponding list of field types
-           :param limit: limit number of records (and size of arrays)
-           :param offset: use offset
-           :param bool do_count: count items before allocation (otherwise use limit)
+           :param limit: (optional) limit number of records (and size of arrays)
+           :param offset: (optional) skip this many records before gathering results
+           :param bool do_count: count items before allocating arrays
+                                 (otherwise, array size is set to limit)
            :param bool select_fields: select exact fields from database (performance/bandwidth tradeoff)
 
-           :returns: list of numpy.arrays, corresponding to the requested fields
+           :returns: list of numpy.ndarray, corresponding to the requested fields and types
+           :rtype: list
         """
 
         query = make_bson(query)

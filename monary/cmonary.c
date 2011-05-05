@@ -36,7 +36,7 @@ mongo_connection* monary_connect(const char* host, int port)
         DEBUG("connected successfully");
         return conn;
     } else {
-        printf("got error code: %i\n", conn_result);
+        DEBUG("received mongo_connect error code: %i\n", conn_result);
         return NULL;
     }
 }
