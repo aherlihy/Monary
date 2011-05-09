@@ -18,7 +18,8 @@
 #define DEFAULT_MONGO_HOST "127.0.0.1"
 #define DEFAULT_MONGO_PORT 27017
 
-mongo_connection* monary_connect(const char* host, int port)
+mongo_connection* monary_connect(const char* host,
+                                 int port)
 {
     if(host == NULL) { host = DEFAULT_MONGO_HOST; }
     if(port == 0) { port = DEFAULT_MONGO_PORT; }
@@ -38,7 +39,10 @@ mongo_connection* monary_connect(const char* host, int port)
     }
 }
 
-int monary_authenticate(mongo_connection* connection, const char* db, const char* user, const char* pass)
+int monary_authenticate(mongo_connection* connection,
+                        const char* db,
+                        const char* user,
+                        const char* pass)
 {
     return mongo_cmd_authenticate(connection, db, user, pass);
 }
@@ -94,7 +98,8 @@ typedef struct monary_cursor {
     monary_column_data* coldata;
 } monary_cursor;
 
-monary_column_data* monary_alloc_column_data(unsigned int num_columns, unsigned int num_rows)
+monary_column_data* monary_alloc_column_data(unsigned int num_columns,
+                                             unsigned int num_rows)
 {
     if(num_columns > 1024) { return NULL; }
     monary_column_data* result = (monary_column_data*) malloc(sizeof(monary_column_data));
@@ -148,7 +153,11 @@ int monary_set_column_item(monary_column_data* coldata,
     return 1;
 }
 
-int monary_load_objectid_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_objectid_value(bson_iterator* bsonit,
+                               bson_type type,
+                               monary_column_item* citem,
+                               int idx)
+{
     if(type == bson_oid) {
         OBJECTID* oid = bson_iterator_oid(bsonit);
         OBJECTID* oidloc = ((OBJECTID*) citem->storage) + idx;
@@ -161,13 +170,21 @@ int monary_load_objectid_value(bson_iterator* bsonit, bson_type type, monary_col
     }
 }
 
-int monary_load_bool_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_bool_value(bson_iterator* bsonit,
+                           bson_type type,
+                           monary_column_item* citem,
+                           int idx)
+{
     BOOL value = bson_iterator_bool(bsonit);
     ((BOOL*) citem->storage)[idx] = value;
     return 1;
 }
 
-int monary_load_int8_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_int8_value(bson_iterator* bsonit,
+                           bson_type type,
+                           monary_column_item* citem,
+                           int idx)
+{
     if(type == bson_int || type == bson_long) {
         INT8 value = bson_iterator_int(bsonit);
         ((INT8*)citem->storage)[idx] = value;
@@ -177,7 +194,11 @@ int monary_load_int8_value(bson_iterator* bsonit, bson_type type, monary_column_
     }
 }
 
-int monary_load_int16_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_int16_value(bson_iterator* bsonit,
+                            bson_type type,
+                            monary_column_item* citem,
+                            int idx)
+{
     if(type == bson_int || type == bson_long) {
         INT16 value = bson_iterator_int(bsonit);
         ((INT16*)citem->storage)[idx] = value;
@@ -187,7 +208,11 @@ int monary_load_int16_value(bson_iterator* bsonit, bson_type type, monary_column
     }
 }
 
-int monary_load_int32_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_int32_value(bson_iterator* bsonit,
+                            bson_type type,
+                            monary_column_item* citem,
+                            int idx)
+{
     if(type == bson_int || type == bson_long) {
         INT32 value = bson_iterator_int(bsonit);
         ((INT32*)citem->storage)[idx] = value;
@@ -197,7 +222,11 @@ int monary_load_int32_value(bson_iterator* bsonit, bson_type type, monary_column
     }
 }
 
-int monary_load_int64_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_int64_value(bson_iterator* bsonit,
+                            bson_type type,
+                            monary_column_item* citem,
+                            int idx)
+{
     if(type == bson_int || type == bson_long) {
         INT64 value = bson_iterator_int(bsonit);
         ((INT64*)citem->storage)[idx] = value;
@@ -207,7 +236,11 @@ int monary_load_int64_value(bson_iterator* bsonit, bson_type type, monary_column
     }
 }
 
-int monary_load_float32_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_float32_value(bson_iterator* bsonit,
+                              bson_type type,
+                              monary_column_item* citem,
+                              int idx)
+{
     if(type == bson_double || type == bson_int || type == bson_long) {
         FLOAT32 value = bson_iterator_double(bsonit);
         ((FLOAT32*) citem->storage)[idx] = value;
@@ -217,7 +250,11 @@ int monary_load_float32_value(bson_iterator* bsonit, bson_type type, monary_colu
     }
 }
 
-int monary_load_float64_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_float64_value(bson_iterator* bsonit,
+                              bson_type type,
+                              monary_column_item* citem,
+                              int idx)
+{
     if(type == bson_double || type == bson_int || type == bson_long) {
         FLOAT64 value = bson_iterator_double(bsonit);
         ((FLOAT64*) citem->storage)[idx] = value;
@@ -227,7 +264,11 @@ int monary_load_float64_value(bson_iterator* bsonit, bson_type type, monary_colu
     }
 }
 
-int monary_load_date_value(bson_iterator* bsonit, bson_type type, monary_column_item* citem, int idx) {
+int monary_load_date_value(bson_iterator* bsonit,
+                           bson_type type,
+                           monary_column_item* citem,
+                           int idx)
+{
     if(type == bson_date) {
         bson_date_t value = bson_iterator_date(bsonit);
         ((INT64*) citem->storage)[idx] = value;
@@ -311,7 +352,8 @@ long monary_query_count(mongo_connection* connection,
     return total_count;
 }
 
-void monary_get_bson_fields_list(monary_column_data* coldata, bson* fields_bson)
+void monary_get_bson_fields_list(monary_column_data* coldata,
+                                 bson* fields_bson)
 {
     bson_buffer fields_builder;
     bson_buffer_init(&fields_builder);
