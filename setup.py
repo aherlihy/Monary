@@ -7,6 +7,8 @@ from distutils.core import setup, Command
 from distutils.command.build import build
 from distutils.ccompiler import new_compiler
 
+DEBUG = False
+
 # Hijack the build process by inserting specialized commands into
 # the list of build sub commands
 build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build.sub_commands
@@ -16,6 +18,9 @@ compiler = new_compiler()
 MONARY_DIR = "monary/"
 CMONGO_SRC = "mongodb-mongo-c-driver-74cc0b8/src/"
 CFLAGS = ["--std=c99", "-fPIC", "-O2"]
+
+if not DEBUG:
+    CFLAGS.append("-DNDEBUG")
 
 # I suspect I could be using the build_clib command for this, but don't know how.
 class BuildCMongoDriver(Command):
