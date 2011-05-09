@@ -14,7 +14,7 @@ build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build
 compiler = new_compiler()
 
 MONARY_DIR = "monary/"
-CMONGO_SRC = "mongodb-mongo-c-driver-7afb6e4/src/"
+CMONGO_SRC = "mongodb-mongo-c-driver-74cc0b8/src/"
 CFLAGS = ["--std=c99", "-fPIC", "-O2"]
 
 # I suspect I could be using the build_clib command for this, but don't know how.
@@ -50,7 +50,7 @@ class BuildCMonary(Command):
 
 setup(
     name = "Monary",
-    version = "0.1.3",
+    version = "0.1.4",
     packages = ["monary"],
     requires = ["pymongo", "numpy"],
     
