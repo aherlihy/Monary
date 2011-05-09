@@ -1,4 +1,9 @@
 
+Version 0.1.4
+-------------
+
+    * Upgraded to latest version of Mongo C driver.  (Changed signature for mongo_connect() function.)
+
 Version 0.1.3
 -------------
 

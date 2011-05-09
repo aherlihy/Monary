@@ -23,14 +23,10 @@ mongo_connection* monary_connect(const char* host, int port)
     if(port == 0) { port = 27017; }
     
     mongo_connection* conn = (mongo_connection*) malloc(sizeof(mongo_connection));
-    mongo_connection_options options;
-    strncpy(options.host, host, sizeof(options.host));
-    options.host[254] = '\0';
-    options.port = port;
     
     DEBUG("attempting connection to: '%s' port %i", options.host, options.port);
     
-    mongo_conn_return conn_result = mongo_connect(conn, &options);
+    mongo_conn_return conn_result = mongo_connect(conn, host, port);
     
     if(conn_result == mongo_conn_success) {
         DEBUG("connected successfully");
