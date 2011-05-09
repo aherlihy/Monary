@@ -75,10 +75,14 @@ typedef union{
 
 typedef int64_t bson_date_t; /* milliseconds since epoch UTC */
 
+typedef struct {
+  int i; /* increment */
+  int t; /* time in seconds */
+} bson_timestamp_t;
+
 /* ----------------------------
    READING
    ------------------------------ */
-
 
 bson * bson_empty(bson * obj); /* returns pointer to static empty bson object */
 void bson_copy(bson* out, const bson* in); /* puts data in new buffer. NOOP if out==NULL */
@@ -108,6 +112,9 @@ const char * bson_iterator_value( const bson_iterator * i );
 double bson_iterator_double( const bson_iterator * i );
 int bson_iterator_int( const bson_iterator * i );
 int64_t bson_iterator_long( const bson_iterator * i );
+
+/* return the bson timestamp as a whole or in parts */
+bson_timestamp_t bson_iterator_timestamp( const bson_iterator * i );
 
 /* false: boolean false, 0 in any type, or null */
 /* true: anything else (even empty strings and objects) */
@@ -172,9 +179,13 @@ bson_buffer * bson_append_int( bson_buffer * b , const char * name , const int i
 bson_buffer * bson_append_long( bson_buffer * b , const char * name , const int64_t i );
 bson_buffer * bson_append_double( bson_buffer * b , const char * name , const double d );
 bson_buffer * bson_append_string( bson_buffer * b , const char * name , const char * str );
+bson_buffer * bson_append_string_n( bson_buffer * b, const char * name, const char * str , int len);
 bson_buffer * bson_append_symbol( bson_buffer * b , const char * name , const char * str );
+bson_buffer * bson_append_symbol_n( bson_buffer * b , const char * name , const char * str , int len );
 bson_buffer * bson_append_code( bson_buffer * b , const char * name , const char * str );
+bson_buffer * bson_append_code_n( bson_buffer * b , const char * name , const char * str , int len );
 bson_buffer * bson_append_code_w_scope( bson_buffer * b , const char * name , const char * code , const bson * scope);
+bson_buffer * bson_append_code_w_scope_n( bson_buffer * b , const char * name , const char * code , int size , const bson * scope);
 bson_buffer * bson_append_binary( bson_buffer * b, const char * name, char type, const char * str, int len );
 bson_buffer * bson_append_bool( bson_buffer * b , const char * name , const bson_bool_t v );
 bson_buffer * bson_append_null( bson_buffer * b , const char * name );
@@ -182,6 +193,7 @@ bson_buffer * bson_append_undefined( bson_buffer * b , const char * name );
 bson_buffer * bson_append_regex( bson_buffer * b , const char * name , const char * pattern, const char * opts );
 bson_buffer * bson_append_bson( bson_buffer * b , const char * name , const bson* bson);
 bson_buffer * bson_append_element( bson_buffer * b, const char * name_or_null, const bson_iterator* elem);
+bson_buffer * bson_append_timestamp( bson_buffer * b, const char * name, bson_timestamp_t * ts );
 
 /* these both append a bson_date */
 bson_buffer * bson_append_date(bson_buffer * b, const char * name, bson_date_t millis);
@@ -200,6 +212,7 @@ void bson_incnumstr(char* str);
    ------------------------------ */
 
 void * bson_malloc(int size); /* checks return value */
+void * bson_realloc(void * ptr, int size); /* checks return value */
 
 /* bson_err_handlers shouldn't return!!! */
 typedef void(*bson_err_handler)(const char* errmsg);
@@ -207,8 +220,6 @@ typedef void(*bson_err_handler)(const char* errmsg);
 /* returns old handler or NULL */
 /* default handler prints error then exits with failure*/
 bson_err_handler set_bson_err_handler(bson_err_handler func);
-
-
 
 /* does nothing is ok != 0 */
 void bson_fatal( int ok );
