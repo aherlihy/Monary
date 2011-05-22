@@ -26,26 +26,30 @@ enum {
     TYPE_INT16 = 4,
     TYPE_INT32 = 5,
     TYPE_INT64 = 6,
-    TYPE_FLOAT32 = 7,
-    TYPE_FLOAT64 = 8,
-    TYPE_DATE = 9,       // BSON date (uint64 storage)
-    TYPE_TIMESTAMP = 10, // BSON timestamp (uint64 storage)
-    TYPE_STRING = 11,    // each record is (type_arg) chars in length
-    TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
-    TYPE_TYPE = 13,      // BSON type code (uint8 storage)
-    TYPE_LENGTH = 14,    // length of string, symbol, binary, or bson object: uint32 storage
-    LAST_TYPE = 14,
+    TYPE_UINT8 = 7,
+    TYPE_UINT16 = 8,
+    TYPE_UINT32 = 9,
+    TYPE_UINT64 = 10,
+    TYPE_FLOAT32 = 11,
+    TYPE_FLOAT64 = 12,
+    TYPE_DATE = 13,      // BSON date (uint64 storage)
+    TYPE_TIMESTAMP = 14, // BSON timestamp (uint64 storage)
+    TYPE_STRING = 15,    // each record is (type_arg) chars in length
+    TYPE_BINARY = 16,    // each record is (type_arg) bytes in length
+    TYPE_TYPE = 17,      // BSON type code (uint8 storage)
+    TYPE_LENGTH = 18,    // length of string, symbol, binary, or bson object: uint32 storage
+    LAST_TYPE = 18,
 };
 
 typedef bson_oid_t OBJECTID;
 typedef char BOOL;
 typedef char INT8;
-typedef unsigned char UINT8;
 typedef short INT16;
-typedef unsigned short UINT16;
 typedef int INT32;
-typedef unsigned int UINT32;
 typedef int64_t INT64;
+typedef unsigned char UINT8;
+typedef unsigned short UINT16;
+typedef unsigned int UINT32;
 typedef uint64_t UINT64;
 typedef float FLOAT32;
 typedef double FLOAT64;
@@ -189,89 +193,31 @@ inline int monary_load_bool_value(bson_iterator* bsonit,
     return 1;
 }
 
-inline int monary_load_int8_value(bson_iterator* bsonit,
-                                  bson_type type,
-                                  monary_column_item* citem,
-                                  int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        INT8 value = bson_iterator_int(bsonit);
-        ((INT8*)citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
+#define MONARY_DEFINE_NUM_LOADER(FUNCNAME, NUMTYPE, BSONFUNC)             \
+inline int FUNCNAME (bson_iterator* bsonit,                               \
+                     bson_type type,                                      \
+                     monary_column_item* citem,                           \
+                     int idx)                                             \
+{                                                                         \
+    if(type == bson_int || type == bson_long || type == bson_double) {    \
+        NUMTYPE value = BSONFUNC(bsonit);                                 \
+        ((NUMTYPE*)citem->storage)[idx] = value;                          \
+        return 1;                                                         \
+    } else {                                                              \
+        return 0;                                                         \
+    }                                                                     \
 }
 
-inline int monary_load_int16_value(bson_iterator* bsonit,
-                                   bson_type type,
-                                   monary_column_item* citem,
-                                   int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        INT16 value = bson_iterator_int(bsonit);
-        ((INT16*)citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-inline int monary_load_int32_value(bson_iterator* bsonit,
-                                   bson_type type,
-                                   monary_column_item* citem,
-                                   int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        INT32 value = bson_iterator_int(bsonit);
-        ((INT32*)citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-inline int monary_load_int64_value(bson_iterator* bsonit,
-                                   bson_type type,
-                                   monary_column_item* citem,
-                                   int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        INT64 value = bson_iterator_int(bsonit);
-        ((INT64*)citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-inline int monary_load_float32_value(bson_iterator* bsonit,
-                                     bson_type type,
-                                     monary_column_item* citem,
-                                     int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        FLOAT32 value = bson_iterator_double(bsonit);
-        ((FLOAT32*) citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-inline int monary_load_float64_value(bson_iterator* bsonit,
-                                     bson_type type,
-                                     monary_column_item* citem,
-                                     int idx)
-{
-    if(type == bson_int || type == bson_long || type == bson_double) {
-        FLOAT64 value = bson_iterator_double(bsonit);
-        ((FLOAT64*) citem->storage)[idx] = value;
-        return 1;
-    } else {
-        return 0;
-    }
-}
+MONARY_DEFINE_NUM_LOADER(monary_load_int8_value, INT8, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_int16_value, INT16, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_int32_value, INT32, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_int64_value, INT64, bson_iterator_long)
+MONARY_DEFINE_NUM_LOADER(monary_load_uint8_value, UINT8, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_uint16_value, UINT16, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_uint32_value, UINT32, bson_iterator_int)
+MONARY_DEFINE_NUM_LOADER(monary_load_uint64_value, UINT64, bson_iterator_long)
+MONARY_DEFINE_NUM_LOADER(monary_load_float32_value, FLOAT32, bson_iterator_double)
+MONARY_DEFINE_NUM_LOADER(monary_load_float64_value, FLOAT64, bson_iterator_double)
 
 inline int monary_load_date_value(bson_iterator* bsonit,
                                   bson_type type,
@@ -370,6 +316,11 @@ inline int monary_load_length_value(bson_iterator* bsonit,
     }
 }
 
+#define MONARY_DISPATCH_TYPE(TYPENAME, TYPEFUNC)    \
+case TYPENAME:                                      \
+success = TYPEFUNC(bsonit, type, citem, offset);    \
+break;
+
 int monary_load_item(bson_iterator* bsonit,
                      bson_type type,
                      monary_column_item* citem,
@@ -377,48 +328,31 @@ int monary_load_item(bson_iterator* bsonit,
 {
     int success = 0;
     switch(citem->type) {
-        case TYPE_OBJECTID:
-            success = monary_load_objectid_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_BOOL:
-            success = monary_load_bool_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_INT8:
-            success = monary_load_int8_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_INT16:
-            success = monary_load_int16_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_INT32:
-            success = monary_load_int32_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_INT64:
-            success = monary_load_int64_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_FLOAT32:
-            success = monary_load_float32_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_FLOAT64:
-            success = monary_load_float64_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_DATE:
-            success = monary_load_date_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_TIMESTAMP:
-            success = monary_load_timestamp_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_STRING:
-            success = monary_load_string_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_BINARY:
-            success = monary_load_binary_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_TYPE:
-            success = monary_load_type_value(bsonit, type, citem, offset);
-            break;
-        case TYPE_LENGTH:
-            success = monary_load_length_value(bsonit, type, citem, offset);
-            break;
+        MONARY_DISPATCH_TYPE(TYPE_OBJECTID, monary_load_objectid_value)
+        MONARY_DISPATCH_TYPE(TYPE_BOOL, monary_load_bool_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_INT8, monary_load_int8_value)
+        MONARY_DISPATCH_TYPE(TYPE_INT16, monary_load_int16_value)
+        MONARY_DISPATCH_TYPE(TYPE_INT32, monary_load_int32_value)
+        MONARY_DISPATCH_TYPE(TYPE_INT64, monary_load_int64_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_UINT8, monary_load_uint8_value)
+        MONARY_DISPATCH_TYPE(TYPE_UINT16, monary_load_uint16_value)
+        MONARY_DISPATCH_TYPE(TYPE_UINT32, monary_load_uint32_value)
+        MONARY_DISPATCH_TYPE(TYPE_UINT64, monary_load_uint64_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_FLOAT32, monary_load_float32_value)
+        MONARY_DISPATCH_TYPE(TYPE_FLOAT64, monary_load_float64_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_DATE, monary_load_date_value)
+        MONARY_DISPATCH_TYPE(TYPE_TIMESTAMP, monary_load_timestamp_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_STRING, monary_load_string_value)
+        MONARY_DISPATCH_TYPE(TYPE_BINARY, monary_load_binary_value)
+
+        MONARY_DISPATCH_TYPE(TYPE_TYPE, monary_load_type_value)
+        MONARY_DISPATCH_TYPE(TYPE_LENGTH, monary_load_length_value)
+        
         default:
             success = 0;
             break;
@@ -548,3 +482,4 @@ void monary_close_query(monary_cursor* cursor)
     mongo_cursor_destroy(cursor->mcursor);
     free(cursor);
 }
+
