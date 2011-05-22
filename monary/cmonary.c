@@ -62,8 +62,8 @@ enum {
     TYPE_INT64 = 6,
     TYPE_FLOAT32 = 7,
     TYPE_FLOAT64 = 8,
-    TYPE_DATE = 9,       // BSON date (int64 storage)
-    TYPE_TIMESTAMP = 10, // BSON timestamp (int64 storage)
+    TYPE_DATE = 9,       // BSON date (uint64 storage)
+    TYPE_TIMESTAMP = 10, // BSON timestamp (uint64 storage)
     TYPE_STRING = 11,    // each record is (type_arg) chars in length
     TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
     TYPE_TYPE = 13,      // BSON type code (uint8 storage)
