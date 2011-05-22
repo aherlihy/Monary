@@ -18,6 +18,38 @@
 #define DEFAULT_MONGO_HOST "127.0.0.1"
 #define DEFAULT_MONGO_PORT 27017
 
+enum {
+    TYPE_UNDEFINED = 0,
+    TYPE_OBJECTID = 1,
+    TYPE_BOOL = 2,
+    TYPE_INT8 = 3,
+    TYPE_INT16 = 4,
+    TYPE_INT32 = 5,
+    TYPE_INT64 = 6,
+    TYPE_FLOAT32 = 7,
+    TYPE_FLOAT64 = 8,
+    TYPE_DATE = 9,       // BSON date (uint64 storage)
+    TYPE_TIMESTAMP = 10, // BSON timestamp (uint64 storage)
+    TYPE_STRING = 11,    // each record is (type_arg) chars in length
+    TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
+    TYPE_TYPE = 13,      // BSON type code (uint8 storage)
+    TYPE_LENGTH = 14,    // length of string, symbol, binary, or bson object: uint32 storage
+    LAST_TYPE = 14,
+};
+
+typedef bson_oid_t OBJECTID;
+typedef char BOOL;
+typedef char INT8;
+typedef unsigned char UINT8;
+typedef short INT16;
+typedef unsigned short UINT16;
+typedef int INT32;
+typedef unsigned int UINT32;
+typedef int64_t INT64;
+typedef uint64_t UINT64;
+typedef float FLOAT32;
+typedef double FLOAT64;
+
 mongo_connection* monary_connect(const char* host,
                                  int port)
 {
@@ -51,34 +83,6 @@ void monary_disconnect(mongo_connection* connection)
 {
     mongo_destroy(connection);
 }
-
-enum {
-    TYPE_UNDEFINED = 0,
-    TYPE_OBJECTID = 1,
-    TYPE_BOOL = 2,
-    TYPE_INT8 = 3,
-    TYPE_INT16 = 4,
-    TYPE_INT32 = 5,
-    TYPE_INT64 = 6,
-    TYPE_FLOAT32 = 7,
-    TYPE_FLOAT64 = 8,
-    TYPE_DATE = 9,       // BSON date (uint64 storage)
-    TYPE_TIMESTAMP = 10, // BSON timestamp (uint64 storage)
-    TYPE_STRING = 11,    // each record is (type_arg) chars in length
-    TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
-    TYPE_TYPE = 13,      // BSON type code (uint8 storage)
-    TYPE_LENGTH = 14,    // length of string, symbol, binary, or bson object: int32 storage
-    LAST_TYPE = 14,
-};
-
-typedef bson_oid_t OBJECTID;
-typedef char BOOL;
-typedef char INT8;
-typedef short INT16;
-typedef int INT32;
-typedef int64_t INT64;
-typedef float FLOAT32;
-typedef double FLOAT64;
 
 typedef struct monary_column_item monary_column_item;
 
@@ -276,7 +280,7 @@ inline int monary_load_date_value(bson_iterator* bsonit,
 {
     if(type == bson_date) {
         bson_date_t value = bson_iterator_date(bsonit);
-        ((INT64*) citem->storage)[idx] = value;
+        ((UINT64*) citem->storage)[idx] = value;
         return 1;
     } else {
         return 0;
@@ -290,7 +294,7 @@ inline int monary_load_timestamp_value(bson_iterator* bsonit,
 {
     if(type == bson_timestamp) {
         bson_timestamp_t value = bson_iterator_timestamp(bsonit);
-        ((INT64*) citem->storage)[idx] = *((INT64*) &value);
+        ((UINT64*) citem->storage)[idx] = *((INT64*) &value);
         return 1;
     } else {
         return 0;
