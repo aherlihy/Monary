@@ -64,9 +64,10 @@ enum {
     TYPE_FLOAT64 = 8,
     TYPE_DATE = 9,       // BSON date (int64 storage)
     TYPE_TIMESTAMP = 10, // BSON timestamp (int64 storage)
-    TYPE_TYPE = 11,      // BSON type code (int32 storage)
-    TYPE_LENGTH = 12,    // length of string, symbol, binary, or bson object: int32 storage
-    NUM_TYPES = 13,
+    TYPE_STRING = 11,
+    TYPE_TYPE = 12,      // BSON type code (int32 storage)
+    TYPE_LENGTH = 13,    // length of string, symbol, binary, or bson object: int32 storage
+    LAST_TYPE = 13,
 };
 
 typedef bson_oid_t OBJECTID;
@@ -87,10 +88,6 @@ struct monary_column_item
     unsigned int type_arg;
     void* storage;
     unsigned char* mask;
-    
-    unsigned int num_cols;
-    int row_stride;
-    int col_stride;
 };
 
 typedef struct monary_column_data
@@ -136,14 +133,11 @@ int monary_set_column_item(monary_column_data* coldata,
                            unsigned int type,
                            unsigned int type_arg,
                            void* storage,
-                           unsigned char* mask,
-                           unsigned int num_cols,
-                           int row_stride,
-                           int col_stride)
+                           unsigned char* mask)
 {
     if(coldata == NULL) { return 0; }
     if(colnum >= coldata->num_columns) { return 0; }
-    if(type == TYPE_UNDEFINED || type >= NUM_TYPES) { return 0; }
+    if(type == TYPE_UNDEFINED || type > LAST_TYPE) { return 0; }
     if(storage == NULL) { return 0; }
     if(mask == NULL) { return 0; }
     
@@ -159,10 +153,6 @@ int monary_set_column_item(monary_column_data* coldata,
     col->type_arg = type_arg;
     col->storage = storage;
     col->mask = mask;
-
-    col->num_cols = num_cols;
-    col->row_stride = row_stride;
-    col->col_stride = col_stride;
 
     return 1;
 }
@@ -306,6 +296,22 @@ inline int monary_load_timestamp_value(bson_iterator* bsonit,
     }
 }
 
+inline int monary_load_string_value(bson_iterator* bsonit,
+                                    bson_type type,
+                                    monary_column_item* citem,
+                                    int idx)
+{
+    if(type == bson_string || type == bson_symbol || type == bson_code) {
+        size_t size = citem->type_arg;
+        const char* src = bson_iterator_string(bsonit);
+        char* dest = ((char*) citem->storage) + (idx * size);
+        strncpy(dest, src, size);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 inline int monary_load_type_value(bson_iterator* bsonit,
                                   bson_type type,
                                   monary_column_item* citem,
@@ -378,6 +384,9 @@ int monary_load_item(bson_iterator* bsonit,
         case TYPE_TIMESTAMP:
             success = monary_load_timestamp_value(bsonit, type, citem, offset);
             break;
+        case TYPE_STRING:
+            success = monary_load_string_value(bsonit, type, citem, offset);
+            break;
         case TYPE_TYPE:
             success = monary_load_type_value(bsonit, type, citem, offset);
             break;
@@ -403,8 +412,7 @@ int monary_bson_to_arrays(monary_column_data* coldata,
         bson_type found_type = bson_find(&bsonit, bson_data, citem->field);
         int success = 0;
 
-        int col = 0;
-        int offset = citem->row_stride * row + citem->col_stride * col;
+        int offset = row;
 
         // dispatch to appropriate column handler (inlined)
         if(found_type) {
