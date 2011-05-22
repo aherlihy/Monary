@@ -38,7 +38,7 @@ FUNCDEFS = [
     "monary_disconnect:P:0",
     "monary_alloc_column_data:UU:P",
     "monary_free_column_data:P:I",
-    "monary_set_column_item:PUSUUPP:I",
+    "monary_set_column_item:PUSUUPPUII:I",
     "monary_query_count:PSSS:L",
     "monary_init_query:PSSIIPI:P",
     "monary_load_query:P:I",
@@ -58,15 +58,18 @@ _decorate_cmonary_functions()
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id": (1, "|V12"),
-    "bool": (2, numpy.bool),
-    "int8": (3, numpy.int8),
-    "int16": (4, numpy.int16),
-    "int32": (5, numpy.int32),
-    "int64": (6, numpy.int64),
-    "float32": (7, numpy.float32),
-    "float64": (8, numpy.float64),
-    "date": (9, numpy.int64),
+    "id":        (1, "|V12"),
+    "bool":      (2, numpy.bool),
+    "int8":      (3, numpy.int8),
+    "int16":     (4, numpy.int16),
+    "int32":     (5, numpy.int32),
+    "int64":     (6, numpy.int64),
+    "float32":   (7, numpy.float32),
+    "float64":   (8, numpy.float64),
+    "date":      (9, numpy.int64),
+    "timestamp": (10, numpy.int64),
+    "type":      (11, numpy.int32),
+    "length":    (12, numpy.int32),
 }
 
 def make_bson(obj):
@@ -223,7 +226,8 @@ class Monary(object):
 
             data_p = data.ctypes.data_as(c_void_p)
             mask_p = mask.ctypes.data_as(c_void_p)
-            cmonary.monary_set_column_item(coldata, i, field, cmonary_type, 0, data_p, mask_p)
+            cmonary.monary_set_column_item(coldata, i, field, cmonary_type, 0, data_p, mask_p,
+                                           1, 1, 0)
 
         return coldata, colarrays
 
