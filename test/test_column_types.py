@@ -31,6 +31,7 @@ def setup():
         record = dict(
                     sequence=i,
                     intval=random.randint(-128, 127),
+                    uintval=random.randint(0, 255),
                     floatval=random.uniform(-1e30, 1e30),
                     boolval=(i % 2 == 0),
                     dateval=(datetime.datetime(1970, 1, 1) +
@@ -67,6 +68,11 @@ def check_int_column(coltype):
     expected = get_record_values("intval")
     assert data == expected
 
+def check_uint_column(coltype):
+    data = get_monary_column("uintval", coltype)
+    expected = get_record_values("uintval")
+    assert data == expected
+
 def check_float_column(coltype):
     data = get_monary_column("floatval", coltype)
     expected = get_record_values("floatval")
@@ -75,6 +81,8 @@ def check_float_column(coltype):
 def test_int_columns():
     for coltype in ["int8", "int16", "int32", "int64"]:
         yield check_int_column, coltype
+    for coltype in ["uint8", "uint16", "uint32", "uint64"]:
+        yield check_uint_column, coltype
 
 def test_float_columns():
     for coltype in ["float32", "float64"]:
