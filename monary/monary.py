@@ -74,8 +74,9 @@ MONARY_TYPES = {
     "timestamp": (14, numpy.uint64),
     "string":    (15, "S"),
     "binary":    (16, "<V"),
-    "type":      (17, numpy.uint8),
-    "length":    (18, numpy.uint32),
+    "bson":      (17, "<V"),
+    "type":      (18, numpy.uint8),
+    "length":    (19, numpy.uint32),
 }
 
 def get_monary_numpy_type(orig_typename):
@@ -95,7 +96,7 @@ def get_monary_numpy_type(orig_typename):
 
     if type_name not in MONARY_TYPES:
         raise ValueError("unknown typename: %r" % tname)
-    if type_name == "string" or type_name == "binary":
+    if type_name in ("string", "binary", "bson"):
         if type_arg == 0:
             raise ValueError("%r must have an explicity typearg with nonzero length "
                              "(use 'string:20', for example)" % type_name)

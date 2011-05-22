@@ -6,6 +6,7 @@ import bson
 import monary
 import random
 import datetime
+from collections import OrderedDict
 
 NUM_TEST_RECORDS = 100
 
@@ -44,6 +45,7 @@ def setup():
                                         for i in xrange(random.randint(1,5))),
                     binaryval=pymongo.binary.Binary("".join(chr(random.randint(0,255))
                                         for i in xrange(5))),
+                    intlistval=[ random.randint(0, 100) for i in xrange(random.randint(1,5)) ]
                 )
         records.append(record)
     coll.insert(records, safe=True)
@@ -119,6 +121,17 @@ def test_string_column():
 def test_binary_column():
     data = [ str(x) for x in get_monary_column("binaryval", "binary:5") ]
     expected = [ str(b) for b in get_record_values("binaryval") ]
+    assert data == expected
+
+def list_to_bsonable_dict(values):
+    return OrderedDict((str(i), val) for i, val in enumerate(values))
+
+def test_bson_column():
+    rawdata = get_monary_column("intlistval", "bson:256")
+    datalen = get_monary_column("intlistval", "length")
+    expected = [ bson.BSON.encode(list_to_bsonable_dict(val))
+                 for val in get_record_values("intlistval") ]
+    data = [ str(x)[:xlen] for x, xlen in zip(rawdata, datalen) ]
     assert data == expected
 
 def test_type_column():
