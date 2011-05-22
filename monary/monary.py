@@ -58,7 +58,7 @@ _decorate_cmonary_functions()
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id":        (1, "|V12"),
+    "id":        (1, "<V12"),
     "bool":      (2, numpy.bool),
     "int8":      (3, numpy.int8),
     "int16":     (4, numpy.int16),
@@ -69,7 +69,7 @@ MONARY_TYPES = {
     "date":      (9, numpy.uint64),
     "timestamp": (10, numpy.uint64),
     "string":    (11, "S"),
-    "binary":    (12, "V"),
+    "binary":    (12, "<V"),
     "type":      (13, numpy.uint8),
     "length":    (14, numpy.int32),
 }
