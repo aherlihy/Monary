@@ -71,7 +71,7 @@ MONARY_TYPES = {
     "string":    (11, "S"),
     "binary":    (12, "<V"),
     "type":      (13, numpy.uint8),
-    "length":    (14, numpy.int32),
+    "length":    (14, numpy.uint32),
 }
 
 def get_monary_numpy_type(orig_typename):
