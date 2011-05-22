@@ -64,10 +64,11 @@ enum {
     TYPE_FLOAT64 = 8,
     TYPE_DATE = 9,       // BSON date (int64 storage)
     TYPE_TIMESTAMP = 10, // BSON timestamp (int64 storage)
-    TYPE_STRING = 11,
-    TYPE_TYPE = 12,      // BSON type code (int32 storage)
-    TYPE_LENGTH = 13,    // length of string, symbol, binary, or bson object: int32 storage
-    LAST_TYPE = 13,
+    TYPE_STRING = 11,    // each record is (type_arg) chars in length
+    TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
+    TYPE_TYPE = 13,      // BSON type code (int32 storage)
+    TYPE_LENGTH = 14,    // length of string, symbol, binary, or bson object: int32 storage
+    LAST_TYPE = 14,
 };
 
 typedef bson_oid_t OBJECTID;
@@ -312,6 +313,24 @@ inline int monary_load_string_value(bson_iterator* bsonit,
     }
 }
 
+inline int monary_load_binary_value(bson_iterator* bsonit,
+                                    bson_type type,
+                                    monary_column_item* citem,
+                                    int idx)
+{
+    if(type == bson_bindata) {
+        int size = citem->type_arg;
+        int binlen = bson_iterator_bin_len(bsonit);
+        if(binlen > size) { binlen = size; }
+        const char* src = bson_iterator_bin_data(bsonit);
+        char* dest = ((char*) citem->storage) + (idx * size);
+        memcpy(dest, src, binlen);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 inline int monary_load_type_value(bson_iterator* bsonit,
                                   bson_type type,
                                   monary_column_item* citem,
@@ -386,6 +405,9 @@ int monary_load_item(bson_iterator* bsonit,
             break;
         case TYPE_STRING:
             success = monary_load_string_value(bsonit, type, citem, offset);
+            break;
+        case TYPE_BINARY:
+            success = monary_load_binary_value(bsonit, type, citem, offset);
             break;
         case TYPE_TYPE:
             success = monary_load_type_value(bsonit, type, citem, offset);
