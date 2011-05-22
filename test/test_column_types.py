@@ -99,6 +99,11 @@ def test_timestamp_column():
     expected = [ ((ts.time << 32) + ts.inc) for ts in timestamps ]
     assert data == expected
 
+def test_string_column():
+    data = get_monary_column("stringval", "string:5")
+    expected = get_record_values("stringval")
+    assert data == expected
+
 def test_type_column():
     data = get_monary_column("dateval", "type")
     # Note: "9" is the bson type code for 'date' values
