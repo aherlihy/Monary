@@ -70,7 +70,7 @@ MONARY_TYPES = {
     "timestamp": (10, numpy.int64),
     "string":    (11, "a"),
     "binary":    (12, "V"),
-    "type":      (13, numpy.int32),
+    "type":      (13, numpy.uint8),
     "length":    (14, numpy.int32),
 }
 
