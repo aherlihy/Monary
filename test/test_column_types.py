@@ -1,4 +1,5 @@
 import pymongo
+import pymongo.timestamp
 import bson
 import monary
 import random
@@ -33,7 +34,11 @@ def setup():
                     dateval=(datetime.datetime(1970, 1, 1) +
                              datetime.timedelta(days=random.randint(0, 60 * 365),
                                                 seconds=random.randint(0, 24 * 60 * 60),
-                                                milliseconds=random.randint(0, 1000)))
+                                                milliseconds=random.randint(0, 1000))),
+                    stringval="".join(chr(ord('A') + random.randint(0,25))
+                                        for i in xrange(random.randint(1,5))),
+                    timestampval=pymongo.timestamp.Timestamp(time=random.randint(0,1000000),
+                                                             inc=random.randint(0,1000000)),
                 )
         records.append(record)
     coll.insert(records, safe=True)
@@ -86,4 +91,22 @@ def test_date_column():
     column = get_monary_column("dateval", "date")
     data = [ monary.mongodate_to_datetime(val) for val in column ]
     expected = get_record_values("dateval")
+    assert data == expected
+
+def test_timestamp_column():
+    data = get_monary_column("timestampval", "timestamp")
+    timestamps = get_record_values("timestampval")
+    expected = [ ((ts.time << 32) + ts.inc) for ts in timestamps ]
+    assert data == expected
+
+def test_type_column():
+    data = get_monary_column("dateval", "type")
+    # Note: "9" is the bson type code for 'date' values
+    # see: http://bsonspec.org/#/specification
+    expected = [ 9 ] * len(data)
+    assert data == expected
+
+def test_string_length_column():
+    data = get_monary_column("stringval", "length")
+    expected = [ len(x) for x in get_record_values("stringval") ]
     assert data == expected
