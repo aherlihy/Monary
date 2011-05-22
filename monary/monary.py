@@ -76,7 +76,8 @@ MONARY_TYPES = {
     "binary":    (16, "<V"),
     "bson":      (17, "<V"),
     "type":      (18, numpy.uint8),
-    "length":    (19, numpy.uint32),
+    "size":      (19, numpy.uint32),
+    "length":    (20, numpy.uint32),
 }
 
 def get_monary_numpy_type(orig_typename):
