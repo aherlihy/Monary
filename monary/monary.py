@@ -38,7 +38,7 @@ FUNCDEFS = [
     "monary_disconnect:P:0",
     "monary_alloc_column_data:UU:P",
     "monary_free_column_data:P:I",
-    "monary_set_column_item:PUSUUPPUII:I",
+    "monary_set_column_item:PUSUUPP:I",
     "monary_query_count:PSSS:L",
     "monary_init_query:PSSIIPI:P",
     "monary_load_query:P:I",
@@ -68,9 +68,36 @@ MONARY_TYPES = {
     "float64":   (8, numpy.float64),
     "date":      (9, numpy.int64),
     "timestamp": (10, numpy.int64),
-    "type":      (11, numpy.int32),
-    "length":    (12, numpy.int32),
+    "string":    (11, "a"),
+    "type":      (12, numpy.int32),
+    "length":    (13, numpy.int32),
 }
+
+def get_monary_numpy_type(orig_typename):
+    # process any type_arg that might be included
+    if ':' in orig_typename:
+        vals = orig_typename.split(':', 2)
+        if len(vals) > 2:
+            raise ValueError("too many parts in type: %r" % orig_typename)
+        type_name, arg = vals
+        try:
+            type_arg = int(arg)
+        except ValueError:
+            raise ValueError("unable to parse type argnument in: %r" % orig_typename)
+    else:
+        type_arg = 0
+        type_name = orig_typename
+
+    if type_name not in MONARY_TYPES:
+        raise ValueError("unknown typename: %r" % tname)
+    if type_name == "string":
+        if type_arg == 0:
+            raise ValueError("string must have nonzero length (use 'string:20', for example)")
+        type_num, _ignore = MONARY_TYPES["string"]
+        numpy_type = "a%i" % type_arg
+    else:
+        type_num, numpy_type = MONARY_TYPES[type_name]
+    return type_num, type_arg, numpy_type
 
 def make_bson(obj):
     """Given a Python (JSON compatible) dictionary, returns a BSON string.
@@ -209,10 +236,8 @@ class Monary(object):
         coldata = cmonary.monary_alloc_column_data(numcols, count)
         colarrays = [ ]
         for i, (field, typename) in enumerate(zip(fields, types)):
-            if typename not in MONARY_TYPES:
-                raise ValueError("not a valid monary type name: %s" % typename)
-            
-            cmonary_type, numpy_type = MONARY_TYPES[typename]
+
+            cmonary_type, cmonary_type_arg, numpy_type = get_monary_numpy_type(typename)
 
             # BUG: how do we default to masking all values in the array
             # I seem to be having some trouble setting this up
@@ -226,8 +251,9 @@ class Monary(object):
 
             data_p = data.ctypes.data_as(c_void_p)
             mask_p = mask.ctypes.data_as(c_void_p)
-            cmonary.monary_set_column_item(coldata, i, field, cmonary_type, 0, data_p, mask_p,
-                                           1, 1, 0)
+            cmonary.monary_set_column_item(coldata, i, field,
+                                           cmonary_type, cmonary_type_arg,
+                                           data_p, mask_p)
 
         return coldata, colarrays
 
