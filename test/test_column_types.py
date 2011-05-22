@@ -1,5 +1,7 @@
 import pymongo
 import pymongo.timestamp
+import pymongo.binary
+
 import bson
 import monary
 import random
@@ -35,10 +37,12 @@ def setup():
                              datetime.timedelta(days=random.randint(0, 60 * 365),
                                                 seconds=random.randint(0, 24 * 60 * 60),
                                                 milliseconds=random.randint(0, 1000))),
-                    stringval="".join(chr(ord('A') + random.randint(0,25))
-                                        for i in xrange(random.randint(1,5))),
                     timestampval=pymongo.timestamp.Timestamp(time=random.randint(0,1000000),
                                                              inc=random.randint(0,1000000)),
+                    stringval="".join(chr(ord('A') + random.randint(0,25))
+                                        for i in xrange(random.randint(1,5))),
+                    binaryval=pymongo.binary.Binary("".join(chr(random.randint(0,255))
+                                        for i in xrange(5))),
                 )
         records.append(record)
     coll.insert(records, safe=True)
@@ -102,6 +106,11 @@ def test_timestamp_column():
 def test_string_column():
     data = get_monary_column("stringval", "string:5")
     expected = get_record_values("stringval")
+    assert data == expected
+
+def test_binary_column():
+    data = [ str(x) for x in get_monary_column("binaryval", "binary:5") ]
+    expected = [ str(b) for b in get_record_values("binaryval") ]
     assert data == expected
 
 def test_type_column():
