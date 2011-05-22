@@ -38,8 +38,9 @@ enum {
     TYPE_BINARY = 16,    // each record is (type_arg) bytes in length
     TYPE_BSON = 17,      // get BSON (sub-)document as binary (each record is type_arg bytes)
     TYPE_TYPE = 18,      // BSON type code (uint8 storage)
-    TYPE_LENGTH = 19,    // length of string, symbol, binary, or bson object: uint32 storage
-    LAST_TYPE = 19,
+    TYPE_SIZE = 19,      // data size of a string, symbol, binary, or bson object (uint32)
+    TYPE_LENGTH = 20,    // length of string (character count) or num elements in BSON (uint32)
+    LAST_TYPE = 20,
 };
 
 typedef bson_oid_t OBJECTID;
@@ -307,7 +308,29 @@ inline int monary_load_type_value(bson_iterator* bsonit,
                                   monary_column_item* citem,
                                   int idx)
 {
-    ((unsigned char*) citem->storage)[idx] = type;
+    ((UINT8*) citem->storage)[idx] = type;
+    return 1;
+}
+
+inline int monary_load_size_value(bson_iterator* bsonit,
+                                  bson_type type,
+                                  monary_column_item* citem,
+                                  int idx)
+{
+    UINT32 size = 0;
+    if(type == bson_string || type == bson_code || type == bson_symbol) {
+        // NOTE: Binary size of string includes terminating '\0' character.
+        size = bson_iterator_string_len(bsonit);
+    } else if(type == bson_bindata) {
+        size = bson_iterator_bin_len(bsonit);
+    } else if(type == bson_array || type == bson_object) {
+        bson subobj;
+        bson_iterator_subobject(bsonit, &subobj);
+        size = bson_size(&subobj);
+    } else {
+        return 0;
+    }
+    ((UINT32*) citem->storage)[idx] = size;
     return 1;
 }
 
@@ -316,20 +339,23 @@ inline int monary_load_length_value(bson_iterator* bsonit,
                                     monary_column_item* citem,
                                     int idx)
 {
-    int length = -1;
+    UINT32 length = 0;
     if(type == bson_string || type == bson_code || type == bson_symbol) {
-        // Note: Python's len() counts the characters in a string.  However,
-        // c-mongo's bson_iterator_string_len fuction includes a NUL terminator
-        // in the count.  Here, we subtract 1 to make it agree with Python.
-        length = bson_iterator_string_len(bsonit) - 1;
-    } else if(type == bson_bindata) {
-        length = bson_iterator_bin_len(bsonit);
+        // The length of the string is the character count.  Since the string
+        // is UTF-8 encoded, we must count characters appropriately...
+        const char* s = bson_iterator_string(bsonit);
+        length = mbstowcs(NULL, s, 0);
     } else if(type == bson_array || type == bson_object) {
-        bson subobj;
-        bson_iterator_subobject(bsonit, &subobj);
-        length = bson_size(&subobj);
+        // The length of a BSON object is the number of elements (i.e. key-value pairs)
+        // it contains.  We count these by iterating over the elements.
+        bson_iterator subiter;
+        bson_iterator_subiterator(bsonit, &subiter);
+        while(bson_iterator_next(&subiter) != 0) { ++length; }
+    } else {
+        // Other objects are not considered to have a length.
+        return 0;
     }
-    ((INT32*) citem->storage)[idx] = length;
+    ((UINT32*) citem->storage)[idx] = length;
     if(length >= 0) {
         return 1;
     } else {
@@ -373,6 +399,7 @@ int monary_load_item(bson_iterator* bsonit,
         MONARY_DISPATCH_TYPE(TYPE_BSON, monary_load_bson_value)
 
         MONARY_DISPATCH_TYPE(TYPE_TYPE, monary_load_type_value)
+        MONARY_DISPATCH_TYPE(TYPE_SIZE, monary_load_size_value)
         MONARY_DISPATCH_TYPE(TYPE_LENGTH, monary_load_length_value)
         
         default:

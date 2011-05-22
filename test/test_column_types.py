@@ -128,10 +128,10 @@ def list_to_bsonable_dict(values):
 
 def test_bson_column():
     rawdata = get_monary_column("intlistval", "bson:256")
-    datalen = get_monary_column("intlistval", "length")
+    datasize = get_monary_column("intlistval", "size")
     expected = [ bson.BSON.encode(list_to_bsonable_dict(val))
                  for val in get_record_values("intlistval") ]
-    data = [ str(x)[:xlen] for x, xlen in zip(rawdata, datalen) ]
+    data = [ str(x)[:xsize] for x, xsize in zip(rawdata, datasize) ]
     assert data == expected
 
 def test_type_column():
@@ -144,4 +144,9 @@ def test_type_column():
 def test_string_length_column():
     data = get_monary_column("stringval", "length")
     expected = [ len(x) for x in get_record_values("stringval") ]
+    assert data == expected
+
+def test_list_length_column():
+    data = get_monary_column("intlistval", "length")
+    expected = [ len(x) for x in get_record_values("intlistval") ]
     assert data == expected
