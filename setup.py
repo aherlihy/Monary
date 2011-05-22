@@ -7,6 +7,8 @@ from distutils.core import setup, Command
 from distutils.command.build import build
 from distutils.ccompiler import new_compiler
 
+import monary
+
 DEBUG = False
 
 # Hijack the build process by inserting specialized commands into
@@ -55,7 +57,7 @@ class BuildCMonary(Command):
 
 setup(
     name = "Monary",
-    version = "0.1.4",
+    version = monary.version,
     packages = ["monary"],
     requires = ["pymongo", "numpy"],
     

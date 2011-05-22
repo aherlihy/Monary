@@ -374,6 +374,7 @@ int monary_load_item(bson_iterator* bsonit,
                      int offset)
 {
     int success = 0;
+
     switch(citem->type) {
         MONARY_DISPATCH_TYPE(TYPE_OBJECTID, monary_load_objectid_value)
         MONARY_DISPATCH_TYPE(TYPE_BOOL, monary_load_bool_value)
@@ -401,11 +402,8 @@ int monary_load_item(bson_iterator* bsonit,
         MONARY_DISPATCH_TYPE(TYPE_TYPE, monary_load_type_value)
         MONARY_DISPATCH_TYPE(TYPE_SIZE, monary_load_size_value)
         MONARY_DISPATCH_TYPE(TYPE_LENGTH, monary_load_length_value)
-        
-        default:
-            success = 0;
-            break;
     }
+
     return success;
 }
 
