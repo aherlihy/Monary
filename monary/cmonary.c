@@ -66,7 +66,7 @@ enum {
     TYPE_TIMESTAMP = 10, // BSON timestamp (int64 storage)
     TYPE_STRING = 11,    // each record is (type_arg) chars in length
     TYPE_BINARY = 12,    // each record is (type_arg) bytes in length
-    TYPE_TYPE = 13,      // BSON type code (int32 storage)
+    TYPE_TYPE = 13,      // BSON type code (uint8 storage)
     TYPE_LENGTH = 14,    // length of string, symbol, binary, or bson object: int32 storage
     LAST_TYPE = 14,
 };
@@ -336,7 +336,7 @@ inline int monary_load_type_value(bson_iterator* bsonit,
                                   monary_column_item* citem,
                                   int idx)
 {
-    ((INT32*) citem->storage)[idx] = type;
+    ((unsigned char*) citem->storage)[idx] = type;
     return 1;
 }
 
