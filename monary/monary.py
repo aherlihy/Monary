@@ -96,7 +96,7 @@ def get_monary_numpy_type(orig_typename):
         type_name = orig_typename
 
     if type_name not in MONARY_TYPES:
-        raise ValueError("unknown typename: %r" % tname)
+        raise ValueError("unknown typename: %r" % type_name)
     if type_name in ("string", "binary", "bson"):
         if type_arg == 0:
             raise ValueError("%r must have an explicity typearg with nonzero length "
@@ -247,11 +247,6 @@ class Monary(object):
 
             cmonary_type, cmonary_type_arg, numpy_type = get_monary_numpy_type(typename)
 
-            # BUG: how do we default to masking all values in the array
-            # I seem to be having some trouble setting this up
-            # (it's a real issue if the array is oversized (allocated too large),
-            # and therefore isn't filled with data...)
-
             data = numpy.zeros([count], dtype=numpy_type)
             mask = numpy.ones([count], dtype=bool)
             storage = numpy.ma.masked_array(data, mask)
@@ -336,7 +331,8 @@ class Monary(object):
                     sort=None, hint=None,
                     block_size=8192, limit=0, offset=0,
                     select_fields=False):
-        """Performs a block query.  Instead of returning a list of arrays, this generator
+        """Performs a block query --- a query whose results are returned in
+           blocks of a given size.  Instead of returning a list of arrays, this generator
            yields portions of each array in multiple blocks, where each block may contain
            up to *block_size* elements.  For documentation of all other arguments, see
            the `query` method.
@@ -354,7 +350,7 @@ class Monary(object):
 
            .. note:: Memory for each block is reused between iterations.  If the
                      caller wishes to retain the values from a given iteration, it
-                     should (deep) copy the data.
+                     should copy the data.
         """
 
         if block_size < 1:
@@ -396,7 +392,7 @@ class Monary(object):
         """Monary connections meet the ContextManager protocol."""
         return self
         
-    def __exit__(self, *args, **kw):
+    def __exit__(self, *args):
         """Monary connections meet the ContextManager protocol."""
         self.close()
         
