@@ -296,7 +296,8 @@ class Monary(object):
            :param offset: (optional) skip this many records before gathering results
            :param bool do_count: count items before allocating arrays
                                  (otherwise, array size is set to limit)
-           :param bool select_fields: select exact fields from database (performance/bandwidth tradeoff)
+           :param bool select_fields: select exact fields from database
+                                      (performance/bandwidth tradeoff)
 
            :returns: list of numpy.ndarray, corresponding to the requested fields and types
            :rtype: list
@@ -330,6 +331,60 @@ class Monary(object):
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
         return colarrays
+
+    def block_query(self, db, coll, query, fields, types,
+                    sort=None, hint=None,
+                    block_size=8192, limit=0, offset=0,
+                    select_fields=False):
+        """Performs a block query.  Instead of returning a list of arrays, this generator
+           yields portions of each array in multiple blocks, where each block may contain
+           up to *block_size* elements.  For documentation of all other arguments, see
+           the `query` method.
+        
+           An example::
+        
+               cumulative_gain = 0.0
+               for buy_price_block, sell_price_block in (
+                    monary.block_query("finance", "assets", {"sold": True},
+                                       ["buy_price", "sell_price"],
+                                       ["float64", "float64"],
+                                       block_size=1024)):
+                    gain = sell_price_block - buy_price_block   # vector subtraction
+                    cumulative_gain += numpy.sum(gain)
+
+           .. note:: Memory for each block is reused between iterations.  If the
+                     caller wishes to retain the values from a given iteration, it
+                     should (deep) copy the data.
+        """
+
+        if block_size < 1:
+            block_size = 1
+
+        full_query = get_full_query(query, sort, hint)
+
+        coldata = None
+        try:
+            coldata, colarrays = self._make_column_data(fields, types, block_size)
+            ns = "%s.%s" % (db, coll)
+            cursor = None
+            try:
+                cursor = cmonary.monary_init_query(self._connection, ns, full_query, limit, offset,
+                                                   coldata, select_fields)
+                while True:
+                    num_rows = cmonary.monary_load_query(cursor)
+                    if num_rows == block_size:
+                        yield colarrays
+                    elif num_rows > 0:
+                        yield [ arr[:num_rows] for arr in colarrays ]
+                        break
+                    else:
+                        break
+            finally:
+                if cursor is not None:
+                    cmonary.monary_close_query(cursor)
+        finally:
+            if coldata is not None:
+                cmonary.monary_free_column_data(coldata)
 
     def close(self):
         """Closes the current connection, if any."""

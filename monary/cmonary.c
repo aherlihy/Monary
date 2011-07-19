@@ -506,7 +506,7 @@ int monary_load_query(monary_cursor* cursor)
     // read result values
     int row = 0;
     int num_masked = 0;
-    while(mongo_cursor_next(mcursor) && row < coldata->num_rows) {
+    while(row < coldata->num_rows && mongo_cursor_next(mcursor)) {
 
 #ifndef NDEBUG
         if(row % 500000 == 0) {
