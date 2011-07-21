@@ -3,7 +3,13 @@
 
 import os.path
 from ctypes import *
-from collections import OrderedDict
+
+try:
+    # if we are using Python 2.7+
+    from collections import OrderedDict
+except ImportError:
+    # for Python 2.6 and earlier
+    from .ordereddict import OrderedDict
 
 import numpy
 import bson
