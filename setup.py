@@ -9,7 +9,7 @@ from distutils.ccompiler import new_compiler
 
 DEBUG = False
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 # Hijack the build process by inserting specialized commands into
 # the list of build sub commands
@@ -53,7 +53,8 @@ class BuildCMonary(Command):
         compiler.compile([MONARY_DIR + "cmonary.c"],
                          extra_preargs=CFLAGS,
                          include_dirs=[CMONGO_SRC])
-        compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"], "cmonary", "monary")
+        compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"],
+                                 "cmonary", "monary")
 
 setup(
     name = "Monary",
