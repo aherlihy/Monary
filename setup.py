@@ -9,7 +9,7 @@ from distutils.ccompiler import new_compiler
 
 DEBUG = False
 
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 
 # Hijack the build process by inserting specialized commands into
 # the list of build sub commands
