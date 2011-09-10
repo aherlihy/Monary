@@ -173,7 +173,7 @@ def get_full_query(query, sort=None, hint=None):
         query = OrderedDict([("$query", query)])
         if sort:
             try:
-                query["$sort"] = get_ordering_dict(sort)
+                query["$orderby"] = get_ordering_dict(sort)
             except ValueError:
                 raise ValueError("sort arg must be string or list of (field, direction) pairs")
         if hint:
