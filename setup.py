@@ -2,7 +2,7 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import glob
-
+import platform
 from distutils.core import setup, Command
 from distutils.command.build import build
 from distutils.ccompiler import new_compiler
@@ -15,7 +15,15 @@ VERSION = "0.2.3"
 # the list of build sub commands
 build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build.sub_commands
 
-compiler = new_compiler()
+# Platform specific stuff
+if platform.system() == 'Windows':
+    compiler_kw = {'compiler' : 'mingw32'}
+    so_target = 'cmonary.dll'
+else:
+    compiler_kw = {}
+    so_target = 'libcmonary.so' 
+
+compiler = new_compiler(**compiler_kw)
 
 MONARY_DIR = "monary/"
 CMONGO_SRC = "mongodb-mongo-c-driver-74cc0b8/src/"
@@ -54,7 +62,7 @@ class BuildCMonary(Command):
                          extra_preargs=CFLAGS,
                          include_dirs=[CMONGO_SRC])
         compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"],
-                                 "cmonary", "monary")
+                                 "cmonary", "monary", libraries = ['ws2_32'])
 
 setup(
     name = "Monary",
@@ -63,7 +71,7 @@ setup(
     requires = ["pymongo", "numpy"],
     
     package_dir = {"monary": "monary"},
-    package_data = {"monary": ["libcmonary.so"]},
+    package_data = {"monary": [so_target]},
 
     author = "David J. C. Beach",
     author_email = "info@djcinnovations.com",

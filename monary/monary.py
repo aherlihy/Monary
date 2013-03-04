@@ -2,6 +2,7 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import os.path
+import platform
 from ctypes import *
 
 try:
@@ -22,7 +23,10 @@ def _load_cmonary_lib():
     thismodule = __file__
     abspath = os.path.abspath(thismodule)
     moduledir = list(os.path.split(abspath))[:-1]
-    cmonaryfile = os.path.join(*(moduledir + ["libcmonary.so"]))
+    if platform.system() == 'Windows':
+        cmonaryfile = os.path.join(*(moduledir + ["cmonary.dll"]))
+    else:
+        cmonaryfile = os.path.join(*(moduledir + ["libcmonary.so"]))
     cmonary = CDLL(cmonaryfile)
 
 _load_cmonary_lib()
