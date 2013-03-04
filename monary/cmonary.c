@@ -44,8 +44,10 @@ enum {
 };
 
 typedef bson_oid_t OBJECTID;
+#ifndef WIN32
 typedef char BOOL;
 typedef char INT8;
+#endif
 typedef short INT16;
 typedef int INT32;
 typedef int64_t INT64;
