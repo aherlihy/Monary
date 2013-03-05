@@ -18,9 +18,11 @@ build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build
 # Platform specific stuff
 if platform.system() == 'Windows':
     compiler_kw = {'compiler' : 'mingw32'}
+    linker_kw = {'libraries' : ['ws2_32']}
     so_target = 'cmonary.dll'
 else:
     compiler_kw = {}
+    linker_kw = {}
     so_target = 'libcmonary.so' 
 
 compiler = new_compiler(**compiler_kw)
@@ -62,7 +64,7 @@ class BuildCMonary(Command):
                          extra_preargs=CFLAGS,
                          include_dirs=[CMONGO_SRC])
         compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"],
-                                 "cmonary", "monary", libraries = ['ws2_32'])
+                                 "cmonary", "monary", **linker_kw)
 
 setup(
     name = "Monary",
