@@ -1,3 +1,6 @@
+# Monary - Copyright 2011-2013 David J. C. Beach
+# Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
+
 import datetime
 
 MONGO_DATE_EPOCH = datetime.datetime(1970, 1, 1)

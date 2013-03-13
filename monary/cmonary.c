@@ -1,4 +1,4 @@
-// Monary - Copyright 2011 David J. C. Beach
+// Monary - Copyright 2011-2013 David J. C. Beach
 // Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 #include <stdlib.h>
@@ -358,11 +358,7 @@ inline int monary_load_length_value(bson_iterator* bsonit,
         return 0;
     }
     ((UINT32*) citem->storage)[idx] = length;
-    if(length >= 0) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return 1;
 }
 
 #define MONARY_DISPATCH_TYPE(TYPENAME, TYPEFUNC)    \

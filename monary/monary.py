@@ -1,4 +1,4 @@
-# Monary - Copyright 2011 David J. C. Beach
+# Monary - Copyright 2011-2013 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import os.path
@@ -24,9 +24,10 @@ def _load_cmonary_lib():
     abspath = os.path.abspath(thismodule)
     moduledir = list(os.path.split(abspath))[:-1]
     if platform.system() == 'Windows':
-        cmonaryfile = os.path.join(*(moduledir + ["cmonary.dll"]))
+        cmonary_fname = "cmonary.dll"
     else:
-        cmonaryfile = os.path.join(*(moduledir + ["libcmonary.so"]))
+        cmonary_fname = "libcmonary.so"
+    cmonaryfile = os.path.join(*(moduledir + [cmonary_fname]))
     cmonary = CDLL(cmonaryfile)
 
 _load_cmonary_lib()
@@ -91,6 +92,21 @@ MONARY_TYPES = {
 }
 
 def get_monary_numpy_type(orig_typename):
+    """Given a common typename, find the corresponding cmonary type number,
+       type argument, and numpy type object (or code).
+
+       The input typename must be one of the keys found in the ``MONARY_TYPES``
+       dictionary.  These are common BSON type names such as ``id``, ``bool``,
+       ``int32``, ``float64``, ``date``, or ``string``.  If the type is ``string``,
+       ``binary``, or ``bson``, its name must be followed by a ``:size`` suffix
+       indicating the maximum number of bytes that will be used to store the
+       representation.
+
+       :param str orig_typename: a common type name with optional argument
+                                 (for fields with a size)
+       :returns: (type_num, type_arg, numpy_type)
+       :rtype: tuple
+    """
     # process any type_arg that might be included
     if ':' in orig_typename:
         vals = orig_typename.split(':', 2)
@@ -109,7 +125,7 @@ def get_monary_numpy_type(orig_typename):
         raise ValueError("unknown typename: %r" % type_name)
     if type_name in ("string", "binary", "bson"):
         if type_arg == 0:
-            raise ValueError("%r must have an explicity typearg with nonzero length "
+            raise ValueError("%r must have an explicit typearg with nonzero length "
                              "(use 'string:20', for example)" % type_name)
         type_num, numpy_type_code = MONARY_TYPES[type_name]
         numpy_type = "%s%i" % (numpy_type_code, type_arg)

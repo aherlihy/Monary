@@ -6,3 +6,4 @@ syntax: glob
 *.so
 *.dylib
 build/*
+*.DS_Store
