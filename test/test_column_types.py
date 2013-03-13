@@ -1,12 +1,14 @@
-import pymongo
-import pymongo.timestamp
-import pymongo.binary
+# Monary - Copyright 2011-2013 David J. C. Beach
+# Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import bson
-import monary
 import random
 import datetime
 from collections import OrderedDict
+
+import bson
+import pymongo
+
+import monary
 
 NUM_TEST_RECORDS = 100
 
@@ -39,12 +41,12 @@ def setup():
                              datetime.timedelta(days=random.randint(0, 60 * 365),
                                                 seconds=random.randint(0, 24 * 60 * 60),
                                                 milliseconds=random.randint(0, 1000))),
-                    timestampval=pymongo.timestamp.Timestamp(time=random.randint(0,1000000),
-                                                             inc=random.randint(0,1000000)),
+                    timestampval=bson.timestamp.Timestamp(time=random.randint(0,1000000),
+                                                          inc=random.randint(0,1000000)),
                     stringval="".join(chr(ord('A') + random.randint(0,25))
                                         for i in xrange(random.randint(1,5))),
-                    binaryval=pymongo.binary.Binary("".join(chr(random.randint(0,255))
-                                        for i in xrange(5))),
+                    binaryval=bson.binary.Binary("".join(chr(random.randint(0,255))
+                                                 for i in xrange(5))),
                     intlistval=[ random.randint(0, 100) for i in xrange(random.randint(1,5)) ]
                 )
         records.append(record)
