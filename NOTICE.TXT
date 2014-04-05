@@ -2,7 +2,7 @@
  Monary
 ========
 
-Copyright 2011-2013 David J. C. Beach
+Copyright 2011-2014 David J. C. Beach
 
 About
 -----
