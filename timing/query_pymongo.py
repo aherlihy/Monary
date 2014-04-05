@@ -21,8 +21,8 @@ def do_pymongo_query():
             for array, field in arrays_fields:
                 array[i] = record[field]
 
-    for array in arrays: # prove that we did something...
-        print numpy.mean(array) 
+    # prove that we did something...
+    print numpy.mean(arrays, axis=-1)
 
 if __name__ == '__main__':
     do_pymongo_query()

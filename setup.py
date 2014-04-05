@@ -79,7 +79,7 @@ setup(
     author_email = "info@djcinnovations.com",
     description = "Monary performs high-performance column queries from MongoDB.",
     keywords = "monary pymongo mongo mongodb numpy array",
-    #url = ""
+    url = "http://bitbucket.org/djcbeach/monary/"
 
     cmdclass = {
         'build_cmongo': BuildCMongoDriver,

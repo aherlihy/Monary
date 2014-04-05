@@ -17,8 +17,8 @@ def do_monary_query():
                 ["float64"] * 5                 # field types
             )
 
-    for array in arrays:                # prove that we did something...
-        print numpy.mean(array)
+    # prove that we did something...
+    print numpy.mean(arrays, axis=-1)
 
 if __name__ == '__main__':
     do_monary_query()
