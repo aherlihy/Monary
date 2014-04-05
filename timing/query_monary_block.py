@@ -17,8 +17,8 @@ def do_monary_block_query():
                 {},                             # query spec
                 ["x1", "x2", "x3", "x4", "x5"], # field names
                 ["float64"] * 5,                # field types
-                block_size=8192,
-                ):
+                block_size=32 * 1024,
+            ):
                 count += len(arrays[0])
                 sums += [ numpy.sum(arr) for arr in arrays ]
 
