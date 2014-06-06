@@ -66,6 +66,13 @@ class BuildCMonary(Command):
         compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"],
                                  "cmonary", "monary", **linker_kw)
 
+# Get README info
+try:
+    with open("README.rst") as fd:
+        readme_content = fd.read()
+except:
+    readme_content = ""
+
 setup(
     name = "Monary",
     version = VERSION,
@@ -78,7 +85,21 @@ setup(
     author = "David J. C. Beach",
     author_email = "info@djcinnovations.com",
     description = "Monary performs high-performance column queries from MongoDB.",
+    long_description = readme_content,
     keywords = "monary pymongo mongo mongodb numpy array",
+    classifiers = [
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: Unix",
+        "Operating System :: Microsoft :: Windows",
+        "Environment :: Console",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2.6",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: Implementation :: CPython",
+        "Topic :: Database"
+    ],
     url = "http://bitbucket.org/djcbeach/monary/",
 
     cmdclass = {
