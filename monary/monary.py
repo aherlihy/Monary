@@ -244,6 +244,7 @@ class Monary(object):
             :rtype: bool
         """
         
+        raise DeprecationWarning()
         assert self._connection is not None, "Not connected"
         result = cmonary.monary_authenticate(self._connection, db, user, passwd)
         return bool(result)
