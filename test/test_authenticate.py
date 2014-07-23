@@ -1,34 +1,77 @@
-# Monary - Copyright 2011-2013 David J. C. Beach
+# Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import pymongo
-import bson
+
 import monary
 
-def get_pymongo_connection():
-    return pymongo.Connection("127.0.0.1")
+db = None
 
-def get_monary_connection():
-    return monary.Monary("127.0.0.1")
 
 def setup():
-    connection = get_pymongo_connection()
-    db = connection.monary_test
+    global db
+    cmd_opts = pymongo.MongoClient().admin.command('getCmdLineOpts')['argv']
+    assert "--auth" in cmd_opts, "The mongo server (mongod) needs to be"\
+                                 "running with authentication (--auth)"
+    connection = pymongo.Connection()
+    db = connection.monary_auth_test
     db.add_user("monary_test_user", "monary_test_pass")
+    db.authenticate("monary_test_user", "monary_test_pass")
     db.junk.insert({"route": 66})
 
+
 def teardown():
-    connection = get_pymongo_connection()
-    connection.drop_database("monary_test")
+    global db
+    db.junk.drop()
+    db.remove_user("monary_test_user")
+
 
 def test_with_authenticate():
-    with get_monary_connection() as monary:
-        success = monary.authenticate("monary_test", "monary_test_user", "monary_test_pass")
-        assert success, "authentication failed"
-        [ col ] = monary.query("monary_test", "junk", {}, ["route"], ["int32"])
-        assert col[0] == 66, "test value could not be retrieved"
+    monary_connection = monary.Monary(host="127.0.0.1",
+                                      database="monary_auth_test",
+                                      username="monary_test_user",
+                                      password="monary_test_pass")
+    col, = monary_connection.query("monary_auth_test", "junk",
+                                   {}, ["route"], ["int32"])
+    assert col[0] == 66, "test value could not be retrieved"
+
+
+def test_with_authenticate_from_uri():
+    monary_connection = monary.Monary("mongodb://monary_test_user:monary_test_"
+                                      "pass@127.0.0.1:27017/monary_auth_test")
+    col, = monary_connection.query("monary_auth_test", "junk",
+                                   {}, ["route"], ["int32"])
+    assert col[0] == 66, "test value could not be retrieved"
+
 
 def test_bad_authenticate():
-    with get_monary_connection() as monary:
-        success = monary.authenticate("monary_test", "monary_test_user", "monary_test_wrong_pass")
-        assert not success, "authentication should not have succeeded with wrong password"
+    try:
+        monary_connection = monary.Monary(host="127.0.0.1",
+                                          database="monary_auth_test",
+                                          username="monary_test_user",
+                                          password="monary_test_wrong_pass")
+        monary_connection.count("monary_auth_test", "junk", {})
+        assert False, "authentication should not have succeeded"\
+                      "with wrong password"
+    except RuntimeError:
+        pass  # auth should have failed
+
+
+def test_reconnection():
+    try:
+        monary_connection = monary.Monary(host="127.0.0.1",
+                                          database="monary_auth_test",
+                                          username="monary_test_user",
+                                          password="monary_test_wrong_pass")
+        monary_connection.count("monary_auth_test", "junk", {})
+        assert False, "authentication should not have succeeded"\
+                      "with wrong password"
+    except RuntimeError:
+        pass  # auth should have failed
+    monary_connection.connect(host="127.0.0.1",
+                              database="monary_auth_test",
+                              username="monary_test_user",
+                              password="monary_test_pass")
+    col, = monary_connection.query("monary_auth_test", "junk",
+                                   {}, ["route"], ["int32"])
+    assert col[0] == 66, "test value could not be retrieved"

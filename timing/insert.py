@@ -1,4 +1,4 @@
-# Monary - Copyright 2011-2013 David J. C. Beach
+# Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import random
@@ -8,9 +8,9 @@ from profile import profile
 
 def do_insert():
 
-    NUM_BATCHES = 3500
+    NUM_BATCHES = 4500
     BATCH_SIZE = 1000
-    # 3500 batches * 1000 per batch = 3.5 million records
+    # 4500 batches * 1000 per batch = 4.5 million records
 
     c = pymongo.Connection("localhost")
     collection = c.monary_test.collection
@@ -30,3 +30,4 @@ def do_insert():
 
 if __name__ == '__main__':
     do_insert()
+    print "Inserted %d records." % NUM_BATCHES * BATCH_SIZE
