@@ -1,0 +1,60 @@
+.\" This manpage is Copyright (C) 2014 MongoDB, Inc.
+.\" 
+.\" Permission is granted to copy, distribute and/or modify this document
+.\" under the terms of the GNU Free Documentation License, Version 1.3
+.\" or any later version published by the Free Software Foundation;
+.\" with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+.\" A copy of the license is included in the section entitled "GNU
+.\" Free Documentation License".
+.\" 
+.TH "MONGOC_STREAM_CORK" "3" "2014-05-16" "MongoDB C Driver"
+.SH NAME
+mongoc_stream_cork()
+.SH "SYNOPSIS"
+
+.nf
+.nf
+int
+mongoc_stream_cork (mongoc_stream_t *stream);
+.fi
+.fi
+
+.SH "PARAMETERS"
+
+.TP
+.B stream
+A
+.BR mongoc_stream_t
+\&.
+.LP
+
+This function shall prevent the writing of bytes to the underlying socket.
+
+.B NOTE
+.RS
+Not all streams implement this function. Buffering generally works better.
+.RE
+
+.SH "RETURNS"
+
+.B 0
+on success,
+.B -1
+on failure and
+.B errno
+is set.
+
+.SH "SEE ALSO"
+
+.BR mongoc_stream_buffered_new(3)
+\&.
+
+.BR mongoc_stream_uncork(3)
+\&.
+
+
+.BR
+.SH COLOPHON
+This page is part of MongoDB C Driver.
+Please report any bugs at
+\%https://jira.mongodb.org/browse/CDRIVER.

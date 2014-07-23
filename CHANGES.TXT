@@ -1,8 +1,29 @@
+Version 0.3.0
+-------------
+
+    * Upgraded to latest version of Mongo C driver (0.98.0).
+
+    * monary_connect() now takes a MongoDB URI or a hostname and
+      port. (See http://docs.mongodb.org/manual/reference/connection-string/
+      for more information.)
+
+    * cmonary.c can now freely cast between all integer and floating-type
+      values.
+
+    * Turned off debug messages by default.
+
+    * datehelper.py now allows negative timedeltas and times before the epoch
+
+    * Removed the authenticate() method: this is a breaking change. If your code
+      relied on authenticate(), you must now include the username and password
+      in the MongoDB URI passed into the Monary constructor.
 
 Version 0.2.3
 -------------
 
     * Corrected issue with query sorts.
+
+    * Updated setup.py for packaging on PyPI.
 
 Version 0.1.4
 -------------
@@ -34,9 +55,9 @@ Version 0.1.1
 
     * Bugfix release for issue with ObjectIDs containing NULL bytes
       (ObjectIDs now use a 12-byte 'void' array type in numeric python.)
-      
+
     * Support for int8, int16, int64, and float32 column types.
-    
+
     * Basic tests for all column types (requires nosetests).
 
 Version 0.1

@@ -1,8 +1,10 @@
-# Monary - Copyright 2011-2013 David J. C. Beach
+# Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import atexit
 import os.path
 import platform
+from urllib import urlencode
 from ctypes import *
 
 try:
@@ -24,7 +26,9 @@ def _load_cmonary_lib():
     abspath = os.path.abspath(thismodule)
     moduledir = list(os.path.split(abspath))[:-1]
     if platform.system() == 'Windows':
-        cmonary_fname = "cmonary.dll"
+        libbson = CDLL(os.path.join(*(moduledir + ['libbson-1.0.dll'])))
+        libcmongo = CDLL(os.path.join(*(moduledir + ['libmongoc-1.0.dll'])))
+        cmonary_fname = "libcmonary.dll"
     else:
         cmonary_fname = "libcmonary.so"
     cmonaryfile = os.path.join(*(moduledir + [cmonary_fname]))
@@ -44,17 +48,23 @@ CTYPE_CODES = {
 # List of C function definitions from the cmonary library
 FUNCDEFS = [
     # format: "func_name:arg_types:return_type"
-    "monary_connect:SI:P",
-    "monary_authenticate:PSSS:I",
+    "monary_init::0",
+    "monary_cleanup::0",
+    "monary_connect:S:P",
     "monary_disconnect:P:0",
+    "monary_use_collection:PSS:P",
+    "monary_destroy_collection:P:0",
     "monary_alloc_column_data:UU:P",
     "monary_free_column_data:P:I",
     "monary_set_column_item:PUSUUPP:I",
-    "monary_query_count:PSSS:L",
-    "monary_init_query:PSSIIPI:P",
+    "monary_query_count:PP:L",
+    "monary_init_query:PUUPPI:P",
     "monary_load_query:P:I",
     "monary_close_query:P:0",
 ]
+
+MAX_COLUMNS = 1024
+MAX_STRING_LENGTH = 1024
 
 def _decorate_cmonary_functions():
     """Decorates each of the cmonary functions with their argument and result types."""
@@ -65,6 +75,10 @@ def _decorate_cmonary_functions():
         func.restype = CTYPE_CODES[restype]
 
 _decorate_cmonary_functions()
+
+# Initialize Monary and register the cleanup function
+cmonary.monary_init()
+atexit.register(cmonary.monary_cleanup)
 
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
@@ -81,10 +95,10 @@ MONARY_TYPES = {
     "uint64":    (10, numpy.uint64),
     "float32":   (11, numpy.float32),
     "float64":   (12, numpy.float64),
-    "date":      (13, numpy.uint64),
+    "date":      (13, numpy.int64),
     "timestamp": (14, numpy.uint64),
-    "string":    (15, "S"),
-    "binary":    (16, "<V"),
+    "string":    (15, "S"),             # The length argument here INCLUDES the null character
+    "binary":    (16, "<V"),            # Raw data (void pointer)
     "bson":      (17, "<V"),
     "type":      (18, numpy.uint8),
     "size":      (19, numpy.uint32),
@@ -116,7 +130,7 @@ def get_monary_numpy_type(orig_typename):
         try:
             type_arg = int(arg)
         except ValueError:
-            raise ValueError("unable to parse type argnument in: %r" % orig_typename)
+            raise ValueError("unable to parse type argument in: %r" % orig_typename)
     else:
         type_arg = 0
         type_name = orig_typename
@@ -135,7 +149,7 @@ def get_monary_numpy_type(orig_typename):
 
 def make_bson(obj):
     """Given a Python (JSON compatible) dictionary, returns a BSON string.
-    
+
        (This hijacks the Python -> BSON conversion code from pymongo, which is needed for
        converting queries.  Perhaps this dependency can be removed in a later version.)
 
@@ -207,46 +221,71 @@ def get_full_query(query, sort=None, hint=None):
 class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
     
-    def __init__(self, host=None, port=0):
+    def __init__(self, host="localhost", port=27017, username=None,
+                 password=None, database=None, options={}):
         """Initialize this connection with the given host and port.
         
-           :param host: host name (or IP) to connect
+           :param host: either host name (or IP) to connect to, or full URI
            :param port: port number of running MongoDB service on host
+           :param username: An optional username for authentication.
+           :param password: An optional password for authentication.
+           :param database: The database to authenticate to if the URI
+           specifies a username and password. If this is not specified but
+           credentials exist, this defaults to the "admin" database. See
+           mongoc_uri(7).
+           :param options: Connection-specific options as a dict.
         """
+
         self._cmonary = cmonary
         self._connection = None
-        self.connect(host, port)
-            
-    def connect(self, host=None, port=0):
+        if not self.connect(host, port, username, password, database, options):
+            raise ValueError("Misformatted Mongo URI.")
+
+    def connect(self, host="localhost", port=27017, username=None,
+                password=None, database=None, options={}):
         """Connects to the given host and port.
 
-           :param host: host name (or IP) to connect
+           :param host: either host name (or IP) to connect to, or full URI
            :param port: port number of running MongoDB service on host
+           :param username: An optional username for authentication.
+           :param password: An optional password for authentication.
+           :param database: The database to authenticate to if the URI
+           specifies a username and password. If this is not specified but
+           credentials exist, this defaults to the "admin" database. See
+           mongoc_uri(7).
+           :param options: Connection-specific options as a dict.
 
-           :returns: True if connection was successful, False otherwise.
+           :returns: True if successful; false otherwise.
            :rtype: bool
         """
+
         if self._connection is not None:
             self.close()
-        self._connection = cmonary.monary_connect(host, port)
-        success = (self._connection is not None)
-        return success
 
-    def authenticate(self, db, user, passwd):
-        """Authenticate this Monary connection for a given database with the provided
-           username and password.
-        
-            :param db: name of database
-            :param user: name of authenticating user
-            :param passwd: password for user
-            
-            :returns: True if authentication was successful, False otherwise.
-            :rtype: bool
-        """
-        
-        assert self._connection is not None, "Not connected"
-        result = cmonary.monary_authenticate(self._connection, db, user, passwd)
-        return bool(result)
+        if host.startswith("mongodb://"):
+            uri = host
+        else:
+            # Build up the URI string.
+            uri = ["mongodb://"]
+            if username is not None:
+                if password is None:
+                    uri.append("%s@" % username)
+                else:
+                    uri.append("%s:%s@" % (username, password))
+            elif password is not None:
+                raise ValueError("You cannot have a password with no username.")
+
+            uri.append("%s:%d" % (host, port))
+
+            if database is not None:
+                uri.append("/%s" % database)
+            if len(options) > 0:
+                uri.append("?%s" % urlencode(options))
+            uri = "".join(uri)
+
+        # Attempt the connection
+        self._connection = cmonary.monary_connect(uri)
+        return (self._connection is not None)
 
     def _make_column_data(self, fields, types, count):
         """Builds the 'column data' structure used by the underlying cmonary code to
@@ -262,14 +301,18 @@ class Monary(object):
                      numpy.ndarray instances
            :rtype: tuple
         """
-        
+
         if len(fields) != len(types):
             raise ValueError("number of fields and types do not match")
-        
         numcols = len(fields)
+        if numcols > MAX_COLUMNS:
+            raise ValueError("number of fields exceeds maximum of %d" % MAX_COLUMNS)
         coldata = cmonary.monary_alloc_column_data(numcols, count)
         colarrays = [ ]
         for i, (field, typename) in enumerate(zip(fields, types)):
+            if len(field) > MAX_STRING_LENGTH:
+                raise ValueError("length of field name %s exceeds "
+                                 "maximum of %d" % (field, MAX_COLUMNS))
 
             cmonary_type, cmonary_type_arg, numpy_type = get_monary_numpy_type(typename)
 
@@ -286,6 +329,22 @@ class Monary(object):
 
         return coldata, colarrays
 
+    def _get_collection(self, db, collection):
+        """Returns the specified collection to query against.
+
+            :param db: name of database
+            :param collection: name of collection
+
+            :returns: the collection
+            :rtype: cmonary mongoc_collection_t*
+        """
+        if self._connection is not None:
+            return cmonary.monary_use_collection(self._connection,
+                                                 db,
+                                                 collection)
+        else:
+            raise ValueError("failed to get collection %s.%s - not connected" % (db, collection))
+
     def count(self, db, coll, query=None):
         """Count the number of records that will be returned by the given query.
         
@@ -296,9 +355,18 @@ class Monary(object):
            :returns: the number of records
            :rtype: int
         """
-        
-        query = make_bson(query)
-        return cmonary.monary_query_count(self._connection, db, coll, query)
+        try:
+            collection = self._get_collection(db, coll)
+            if collection is None:
+                raise ValueError("couldn't connect to collection %s.%s" % (db, coll))
+            query = make_bson(query)
+            count = cmonary.monary_query_count(collection, query)
+        finally:
+            if collection is not None:
+                cmonary.monary_destroy_collection(collection)
+        if count < 0:
+            raise RuntimeError("Internal error in count()")
+        return count
 
     def query(self, db, coll, query, fields, types,
               sort=None, hint=None,
@@ -339,15 +407,19 @@ class Monary(object):
         coldata = None
         try:
             coldata, colarrays = self._make_column_data(fields, types, count)
-            ns = "%s.%s" % (db, coll)
             cursor = None
             try:
-                cursor = cmonary.monary_init_query(self._connection, ns, full_query, limit, offset,
-                                                   coldata, select_fields)
+                collection = self._get_collection(db, coll)
+                if collection is None:
+                    raise ValueError("unable to get the collection")
+                cursor = cmonary.monary_init_query(collection, offset, limit,
+                                                   full_query, coldata, select_fields)
                 cmonary.monary_load_query(cursor)
             finally:
                 if cursor is not None:
                     cmonary.monary_close_query(cursor)
+                if collection is not None:
+                    cmonary.monary_destroy_collection(collection)
         finally:
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
@@ -357,12 +429,29 @@ class Monary(object):
                     sort=None, hint=None,
                     block_size=8192, limit=0, offset=0,
                     select_fields=False):
-        """Performs a block query --- a query whose results are returned in
+        """Performs a block query.
+
+           :param db: name of database
+           :param coll: name of the collection to be queried
+           :param query: dictionary of Mongo query parameters
+           :param fields: list of fields to be extracted from each record
+           :param types: corresponding list of field types
+           :param sort: (optional) single field name or list of (field, direction) pairs
+           :param hint: (optional) single field name or list of (field, direction) pairs
+           :param block_size: (optional) size in number of rows of each yeilded list 
+           :param limit: (optional) limit number of records (and size of arrays)
+           :param offset: (optional) skip this many records before gathering results
+           :param bool select_fields: select exact fields from database
+                                      (performance/bandwidth tradeoff)
+
+           :returns: list of numpy.ndarray, corresponding to the requested fields and types
+           :rtype: list
+
+           A block query is a query whose results are returned in
            blocks of a given size.  Instead of returning a list of arrays, this generator
            yields portions of each array in multiple blocks, where each block may contain
-           up to *block_size* elements.  For documentation of all other arguments, see
-           the `query` method.
-        
+           up to *block_size* elements.
+
            An example::
         
                cumulative_gain = 0.0
@@ -387,11 +476,13 @@ class Monary(object):
         coldata = None
         try:
             coldata, colarrays = self._make_column_data(fields, types, block_size)
-            ns = "%s.%s" % (db, coll)
             cursor = None
             try:
-                cursor = cmonary.monary_init_query(self._connection, ns, full_query, limit, offset,
-                                                   coldata, select_fields)
+                collection = self._get_collection(db, coll)
+                if collection is None:
+                    raise ValueError("unable to get the collection")
+                cursor = cmonary.monary_init_query(collection, offset, limit,
+                                                   full_query, coldata, select_fields)
                 while True:
                     num_rows = cmonary.monary_load_query(cursor)
                     if num_rows == block_size:
@@ -404,6 +495,8 @@ class Monary(object):
             finally:
                 if cursor is not None:
                     cmonary.monary_close_query(cursor)
+                if collection is not None:
+                    cmonary.monary_destroy_collection(collection)
         finally:
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)

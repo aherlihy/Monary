@@ -1,7 +1,9 @@
-# Monary - Copyright 2011-2013 David J. C. Beach
+# Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import pymongo
 
-c = pymongo.Connection("localhost")
-c.drop_database("monary_test")
+if __name__ == '__main__':
+    c = pymongo.Connection("localhost")
+    c.drop_database("monary_test")
+    print "Database 'monary_test' removed."

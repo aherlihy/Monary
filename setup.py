@@ -1,15 +1,27 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import glob
+import os
 import platform
-from distutils.core import setup, Command
+import re
+import subprocess
+import sys
+from distutils.core import Command
 from distutils.command.build import build
 from distutils.ccompiler import new_compiler
 
+# Don't force people to install setuptools unless
+# we have to.
+try:
+    from setuptools import setup
+except ImportError:
+    from ez_setup import use_setuptools
+    use_setuptools()
+    from setuptools import setup
+
 DEBUG = False
 
-VERSION = "0.2.3"
+VERSION = "0.3.0"
 
 # Hijack the build process by inserting specialized commands into
 # the list of build sub commands
@@ -19,24 +31,28 @@ build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build
 if platform.system() == 'Windows':
     compiler_kw = {'compiler' : 'mingw32'}
     linker_kw = {'libraries' : ['ws2_32']}
-    so_target = 'cmonary.dll'
+    so_target = 'libcmonary.dll'
 else:
     compiler_kw = {}
-    linker_kw = {}
+    linker_kw = {'libraries' : []}
     so_target = 'libcmonary.so' 
 
 compiler = new_compiler(**compiler_kw)
 
-MONARY_DIR = "monary/"
-CMONGO_SRC = "mongodb-mongo-c-driver-74cc0b8/src/"
-CFLAGS = ["--std=c99", "-fPIC", "-O2"]
+MONARY_DIR = "monary"
+CMONGO_SRC = "mongodb-mongo-c-driver-0.98.0"
+CFLAGS = ["-fPIC", "-O2"]
 
 if not DEBUG:
     CFLAGS.append("-DNDEBUG")
 
+class BuildException(Exception):
+    """Indicates an error occurred while compiling from source."""
+    pass
+
 # I suspect I could be using the build_clib command for this, but don't know how.
 class BuildCMongoDriver(Command):
-    """Custom command to build the C Mongo driver."""
+    """Custom command to build the C Mongo driver. Relies on autotools."""
     description = "builds the C Mongo driver"
     user_options = [ ]
     def initialize_options(self):
@@ -44,10 +60,25 @@ class BuildCMongoDriver(Command):
     def finalize_options(self):
         pass
     def run(self):
-        CMONGO_UNITS = glob.glob(CMONGO_SRC + "*.c")
-        CMONGO_OBJECTS = [ f[:-2] + ".o" for f in CMONGO_UNITS ]
-        compiler.compile(CMONGO_UNITS, extra_preargs=CFLAGS, include_dirs=[CMONGO_SRC])
-        compiler.create_static_lib(CMONGO_OBJECTS, "mongo", CMONGO_SRC)
+        try:
+            os.chdir(CMONGO_SRC)
+            status = subprocess.call(["./configure", "--enable-static",
+                                      "--without-documentation",
+                                      "--disable-maintainer-mode",
+                                      "--disable-tests", "--disable-examples"])
+            if status != 0:
+                raise BuildException("configure script failed with exit status %d" % status)
+
+            status = subprocess.call(["make"])
+            if status != 0:
+                raise BuildException("make failed with exit status %d" % status)
+            # after configuring, add libs to linker_kw
+            with open(os.path.join("src", "libmongoc-1.0.pc")) as f:
+                libs = re.search(r"Libs:\s+(.+)$", f.read(), flags=re.MULTILINE).group(1)
+                libs = [l[2:] for l in re.split(r"\s+", libs)[:-1] if l.startswith("-l")]
+                linker_kw["libraries"] += libs
+        finally:
+            os.chdir("..")
 
 class BuildCMonary(Command):
     """Custom command to build the cmonary library, static linking to the cmongo drivers,
@@ -60,11 +91,14 @@ class BuildCMonary(Command):
     def finalize_options(self):
         pass
     def run(self):
-        compiler.compile([MONARY_DIR + "cmonary.c"],
+        compiler.compile([os.path.join(MONARY_DIR, "cmonary.c")],
                          extra_preargs=CFLAGS,
-                         include_dirs=[CMONGO_SRC])
-        compiler.link_shared_lib([MONARY_DIR + "cmonary.o", CMONGO_SRC + "libmongo.a"],
-                                 "cmonary", "monary", **linker_kw)
+                         include_dirs=[os.path.join(CMONGO_SRC, "src", "mongoc"),
+                                       os.path.join(CMONGO_SRC, "src", "libbson", "src", "bson")])
+        compiler.link_shared_lib([os.path.join(MONARY_DIR, "cmonary.o"),
+                                  os.path.join(CMONGO_SRC, ".libs", "libmongoc-1.0.a"),
+                                  os.path.join(CMONGO_SRC, "src", "libbson", ".libs", "libbson-1.0.a")],
+                                  "cmonary", "monary", **linker_kw)
 
 # Get README info
 try:
