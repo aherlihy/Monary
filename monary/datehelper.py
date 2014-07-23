@@ -1,4 +1,4 @@
-# Monary - Copyright 2011-2013 David J. C. Beach
+# Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import datetime
@@ -23,8 +23,6 @@ def datetime_to_mongodate(dt):
     """
     if not isinstance(dt, (datetime.date, datetime.datetime)):
         raise ValueError("requires a date or datetime value")
-    if dt < MONGO_DATE_EPOCH:
-        raise ValueError("Mongo cannot represent date before January 1, 1970")
     return timedelta_to_mongodelta(dt - MONGO_DATE_EPOCH)
 
 def mongodelta_to_timedelta(mongodelta):
@@ -50,5 +48,5 @@ def timedelta_to_mongodelta(td):
     """
     if not isinstance(td, datetime.timedelta):
         raise ValueError, "requires a timedelta value"
-    millis = (td.total_seconds() * 1000) + (td.microseconds / 1000)
+    millis = (td.microseconds / 1000 + (td.seconds + td.days * 24 * 3600) * 1000)
     return millis
