@@ -27,7 +27,7 @@ def do_insert():
                          )
                 stuff.append(record)
             collection.insert(stuff)
+    print "Inserted %d records." % (NUM_BATCHES * BATCH_SIZE)
 
 if __name__ == '__main__':
     do_insert()
-    print "Inserted %d records." % NUM_BATCHES * BATCH_SIZE
