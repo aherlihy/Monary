@@ -13,4 +13,4 @@ class profile(object):
         
     def __exit__(self, *args):
         stop = time()
-        print "%s took %6.2f s" % (self._name, stop - self._start)
+        print("%s took %6.2f s" % (self._name, stop - self._start))

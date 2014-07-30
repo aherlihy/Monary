@@ -6,6 +6,12 @@ import pymongo
 
 from profile import profile
 
+try:
+    xrange
+except NameError:
+    xrange = range
+
+
 def do_insert():
 
     NUM_BATCHES = 4500

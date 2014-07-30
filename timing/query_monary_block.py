@@ -22,8 +22,9 @@ def do_monary_block_query():
                 count += len(arrays[0])
                 sums += [ numpy.sum(arr) for arr in arrays ]
 
-    print "visited %i items" % count
-    print sums / count                          # prove that we did something...
+    print("visited %i items" % count)
+    # prove that we did something...
+    print(sums / count)
 
 if __name__ == '__main__':
     do_monary_block_query()
