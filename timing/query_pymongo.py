@@ -2,6 +2,7 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import numpy
+
 import pymongo
 
 from profile import profile
@@ -15,14 +16,14 @@ def do_pymongo_query():
         num = collection.count()
         arrays = [ numpy.zeros(num) for i in range(5) ]
         fields = [ "x1", "x2", "x3", "x4", "x5" ]
-        arrays_fields = zip(arrays, fields)
+        arrays_fields = list(zip(arrays, fields))
 
         for i, record in enumerate(collection.find()):
             for array, field in arrays_fields:
                 array[i] = record[field]
 
     # prove that we did something...
-    print numpy.mean(arrays, axis=-1)
+    print(numpy.mean(arrays, axis=-1))
 
 if __name__ == '__main__':
     do_pymongo_query()

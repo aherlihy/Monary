@@ -4,8 +4,20 @@
 import atexit
 import os.path
 import platform
-from urllib import urlencode
+import sys
 from ctypes import *
+
+PY3 = sys.version_info[0] >= 3
+if PY3:
+    # Python 3
+    bytes_type = bytes
+    string_type = str
+    from urllib.parse import urlencode
+else:
+    # Python 2.6/2.7
+    bytes_type = basestring
+    string_type = basestring
+    from urllib import urlencode
 
 try:
     # if we are using Python 2.7+
@@ -97,8 +109,10 @@ MONARY_TYPES = {
     "float64":   (12, numpy.float64),
     "date":      (13, numpy.int64),
     "timestamp": (14, numpy.uint64),
-    "string":    (15, "S"),             # The length argument here INCLUDES the null character
-    "binary":    (16, "<V"),            # Raw data (void pointer)
+    # The length argument here INCLUDES the null character
+    "string":    (15, "S"),
+    # Raw data (void pointer)
+    "binary":    (16, "<V"),
     "bson":      (17, "<V"),
     "type":      (18, numpy.uint8),
     "size":      (19, numpy.uint32),
@@ -159,9 +173,30 @@ def make_bson(obj):
     """
     if obj is None:
         obj = { }
-    if not isinstance(obj, basestring):
+    if not isinstance(obj, bytes_type):
         obj = bson.BSON.encode(obj)
     return obj
+
+
+def mvoid_to_bson_id(mvoid):
+    """Converts a numpy mvoid value to a BSON ObjectId.
+
+       :param mvoid: numpy.ma.core.mvoid returned from Monary
+       :returns: the _id as a bson ObjectId
+       :rtype: bson.objectid.ObjectId
+    """
+    if PY3:
+        # Python 3
+        string = str(mvoid)
+        string_list = ''.join(filter(lambda x: x not in '[]', string)).split()
+        ints = map(int, string_list)
+        uints = [x & 0xff for x in ints]
+        id_bytes = bytes(uints)
+        return bson.ObjectId(id_bytes)
+    else:
+        # Python 2.6 / 2.7
+        return bson.ObjectId(str(mvoid))
+
 
 def get_ordering_dict(obj):
     """Converts a field/direction specification to an OrderedDict, suitable
@@ -173,7 +208,7 @@ def get_ordering_dict(obj):
     """
     if obj is None:
         return OrderedDict()
-    elif isinstance(obj, basestring):
+    elif isinstance(obj, string_type):
         return OrderedDict([(obj, 1)])
     elif isinstance(obj, list):
         return OrderedDict(obj)
@@ -284,7 +319,7 @@ class Monary(object):
             uri = "".join(uri)
 
         # Attempt the connection
-        self._connection = cmonary.monary_connect(uri)
+        self._connection = cmonary.monary_connect(uri.encode('ascii'))
         return (self._connection is not None)
 
     def _make_column_data(self, fields, types, count):
@@ -323,7 +358,7 @@ class Monary(object):
 
             data_p = data.ctypes.data_as(c_void_p)
             mask_p = mask.ctypes.data_as(c_void_p)
-            cmonary.monary_set_column_item(coldata, i, field,
+            cmonary.monary_set_column_item(coldata, i, field.encode('ascii'),
                                            cmonary_type, cmonary_type_arg,
                                            data_p, mask_p)
 
@@ -340,8 +375,8 @@ class Monary(object):
         """
         if self._connection is not None:
             return cmonary.monary_use_collection(self._connection,
-                                                 db,
-                                                 collection)
+                                                 db.encode('ascii'),
+                                                 collection.encode('ascii'))
         else:
             raise ValueError("failed to get collection %s.%s - not connected" % (db, collection))
 
@@ -355,6 +390,7 @@ class Monary(object):
            :returns: the number of records
            :rtype: int
         """
+        collection = None
         try:
             collection = self._get_collection(db, coll)
             if collection is None:

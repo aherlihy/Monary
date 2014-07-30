@@ -47,6 +47,6 @@ def timedelta_to_mongodelta(td):
        :rtype: int
     """
     if not isinstance(td, datetime.timedelta):
-        raise ValueError, "requires a timedelta value"
+        raise ValueError("requires a timedelta value")
     millis = (td.microseconds / 1000 + (td.seconds + td.days * 24 * 3600) * 1000)
     return millis
