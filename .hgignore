@@ -1,12 +1,65 @@
 syntax: glob
 
-*.pyc
-*.o
-*.a
-*.so
-*.dylib
+Makefile
 *.DS_Store
+*.tar.gz
+
+# Swap files
+*.sw[po]
+*~
+
+# Compiled files and build artifacts
+*.Plo
+*.Po
+*.a
+*.dylib
+*.la
+*.lo
+*.o
+*.pc
+*.pyc
+*.so
+.dirstamp
+.libs/*
+
+# Python build artifacts
+Monary.egg-info/*
+*.egg
+
+# C driver build artifacts
+mongodb-mongo-c-driver-*/src/mongoc/mongoc-config.h
+mongodb-mongo-c-driver-*/Makefile
+mongodb-mongo-c-driver-*/build/version
+mongodb-mongo-c-driver-*/config.log
+mongodb-mongo-c-driver-*/config.status
+mongodb-mongo-c-driver-*/libtool
+
+# libbson build artifacts
+mongodb-mongo-c-driver-*/src/libbson/src/bson/bson-stdint.h
+mongodb-mongo-c-driver-*/src/libbson/src/bson/bson-config.h
+mongodb-mongo-c-driver-*/src/libbson/config.log
+mongodb-mongo-c-driver-*/src/libbson/config.status
+mongodb-mongo-c-driver-*/src/libbson/libtool
+
+# libmongoc executables
+mongodb-mongo-c-driver-*/mongoc-stat
+
+# libbson executables
+mongodb-mongo-c-driver-*/src/libbson/bcon-col-view
+mongodb-mongo-c-driver-*/src/libbson/bcon-speed
+mongodb-mongo-c-driver-*/src/libbson/bson-metrics
+mongodb-mongo-c-driver-*/src/libbson/bson-to-json
+mongodb-mongo-c-driver-*/src/libbson/bson-validate
+mongodb-mongo-c-driver-*/src/libbson/json-to-bson
+mongodb-mongo-c-driver-*/src/libbson/test-libbson
 
 syntax: regexp
 
 ^build/
+
+
+
+
+
+
+^dist/
