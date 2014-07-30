@@ -2,6 +2,8 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import sys
+
 import pymongo
 
 import monary
@@ -22,13 +24,16 @@ def teardown():
 
 def test_utf8():
     with monary.Monary("127.0.0.1") as m:
-        [data] = m.query("monary_test",
-                         "data",
-                         {},
-                         ["test"],
-                         ["string:8"],
-                         sort="sequence")
+        data, = m.query("monary_test",
+                        "data",
+                        {},
+                        ["test"],
+                        ["string:8"],
+                        sort="sequence")
 
     expected = ["aあ", "âéÇ", "αλΩ"]
     for x, y in zip(data, expected):
+        if sys.version_info[0] >= 3:
+            # Python 3
+            x = x.decode('utf8')
         assert x == y

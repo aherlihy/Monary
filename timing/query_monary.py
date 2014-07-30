@@ -1,9 +1,9 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-from monary import Monary
 import numpy
 
+from monary import Monary
 from profile import profile
 
 def do_monary_query():
@@ -18,7 +18,7 @@ def do_monary_query():
             )
 
     # prove that we did something...
-    print numpy.mean(arrays, axis=-1)
+    print(numpy.mean(arrays, axis=-1))
 
 if __name__ == '__main__':
     do_monary_query()
