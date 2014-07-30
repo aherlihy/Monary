@@ -133,11 +133,10 @@ def list_to_bsonable_dict(values):
     return OrderedDict((str(i), val) for i, val in enumerate(values))
 
 def test_bson_column():
-    size = get_monary_column("subdocumentval", "size")[0]
+    size = max(get_monary_column("subdocumentval", "size"))
     rawdata = get_monary_column("subdocumentval", "bson:%d" % size)
-    data = ["".join(c for c in x.data.data) for x in rawdata]
-    expected = ["".join(c for c in bson.BSON.encode(record))
-                for record in get_record_values("subdocumentval")]
+    expected = get_record_values("subdocumentval")
+    data = [bson.BSON(x).decode() for x in rawdata]
     assert data == expected
 
 def test_type_column():
