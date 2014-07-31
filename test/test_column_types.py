@@ -131,7 +131,7 @@ def test_timestamp_column():
     assert data == expected
 
 def test_string_column():
-    data = get_monary_column("stringval", "string:6")
+    data = get_monary_column("stringval", "string:5")
     expected = [s.encode('ascii') for s in get_record_values("stringval")]
     assert data == expected
 
