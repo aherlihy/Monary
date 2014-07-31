@@ -109,7 +109,7 @@ MONARY_TYPES = {
     "float64":   (12, numpy.float64),
     "date":      (13, numpy.int64),
     "timestamp": (14, numpy.uint64),
-    # The length argument here INCLUDES the null character
+    # Note, numpy strings do not need the null character
     "string":    (15, "S"),
     # Raw data (void pointer)
     "binary":    (16, "<V"),
