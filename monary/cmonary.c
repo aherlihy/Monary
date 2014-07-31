@@ -625,10 +625,10 @@ int monary_bson_to_arrays(monary_column_data* coldata,
                           const bson_t* bson_data)
 {
     bson_iter_t bsonit;
-    const char* field;
+    bson_iter_t descendant;
     int i;
+    int masked;
     int success;
-    int fields_found;
     monary_column_item* citem;
 
     if (!coldata || !bson_data) {
@@ -636,46 +636,31 @@ int monary_bson_to_arrays(monary_column_data* coldata,
         return -1;
     }
     if (row > coldata->num_rows) {
-        DEBUG("Tried to load row %d, but that exceeds the maximum # of rows (%d)", row, coldata->num_rows);
-        return -1;
-    }
-    if (!bson_iter_init(&bsonit, bson_data)) {
-        DEBUG("%s", "Failed to initialize a BSON iterator");
+        DEBUG("Tried to load row %d, but that exceeds the maximum # of rows (%d) ", row, coldata->num_rows);
         return -1;
     }
 
-    // Mask all the values by default
+    masked = 0;
     for (i = 0; i < coldata->num_columns; i++) {
-        citem = coldata->columns + i;
-        if (citem->mask != NULL) {
-            citem->mask[row] = 1;
-        }
-    }
-
-    fields_found = 0;
-    while (bson_iter_next(&bsonit) && fields_found < coldata->num_columns) {
-        field = bson_iter_key(&bsonit);
         success = 0;
+        citem = coldata->columns + i;
 
-        // Find the corresponding column
-        for (i = 0; i < coldata->num_columns; i++) {
-            citem = coldata->columns + i;
+        // Use the iterator to find the field we want
+        bson_iter_init(&bsonit, bson_data);
+        if (bson_iter_find_descendant(&bsonit, citem->field, &descendant)) {
+            success = monary_load_item(&descendant, citem, row);
+        }
 
-            // Load the item, whose type should match the storage specified
-            if (strcmp(field, citem->field) == 0) {
-                success = monary_load_item(&bsonit, citem, row);
-                ++fields_found;
-
-                // Record success in the mask, if applicable
-                if (citem->mask != NULL) {
-                    citem->mask[row] = !success;
-                }
-                break;
-            }
+        // Record success in mask
+        if (citem->mask != NULL) {
+            citem->mask[row] = !success;
+        }
+        if (!success) {
+            masked++;
         }
     }
 
-    return coldata->num_columns - fields_found;
+    return masked;
 }
 
 /**
