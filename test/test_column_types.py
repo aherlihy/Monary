@@ -209,7 +209,7 @@ def test_bson_length_column():
 
 def test_string_size_column():
     data = get_monary_column("stringval", "size")
-    expected = [ len(x) + 1 for x in get_record_values("stringval") ]
+    expected = [ len(x) for x in get_record_values("stringval") ]
     assert data == expected
 
 def test_list_size_column():
