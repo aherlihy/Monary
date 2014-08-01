@@ -816,6 +816,67 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
 }
 
 /**
+ * Performs an aggregation operation on a MongoDB collection.
+ *
+ * @param collection The MongoDB collection to query against.
+ * @param pipeline A pointer to a BSON buffer representing the pipeline.
+ * @param coldata The column data to store the results in.
+ *
+ * @return If successful, a Monary cursor that should be freed with
+ * monary_close_query() when no longer in use. If unsuccessful, or if an invalid
+ * pipeline was passed in, NULL is returned.
+ */
+monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
+                                     const uint8_t* pipeline,
+                                     monary_column_data* coldata)
+{
+    bson_t pl_bson;
+    int32_t pl_size;
+    mongoc_cursor_t* mcursor;
+    monary_cursor* cursor;
+
+    // Sanity checks
+    if (!collection) {
+        DEBUG("%s", "Invalid collection");
+        return NULL;
+    }
+    else if (!pipeline) {
+        DEBUG("%s", "Invalid pipeline");
+        return NULL;
+    }
+
+    // Build BSON pipeline
+    memcpy(&pl_size, pipeline, sizeof(int32_t));
+    pl_size = (int32_t) BSON_UINT32_FROM_LE(pl_size);
+    if (!bson_init_static(&pl_bson,
+                          pipeline,
+                          pl_size)) {
+        DEBUG("%s", "Failed to initialize raw BSON pipeline");
+        return NULL;
+    }
+
+    // Get an aggregation cursor
+    mcursor = mongoc_collection_aggregate(collection,
+                                          MONGOC_QUERY_NONE,
+                                          &pl_bson,
+                                          NULL,
+                                          NULL);
+
+    // Clean up
+    bson_destroy(&pl_bson);
+
+    if (!mcursor) {
+        DEBUG("%s", "An error occurred with the aggregation");
+        return NULL;
+    }
+
+    cursor = (monary_cursor*) malloc(sizeof(monary_cursor));
+    cursor->mcursor = mcursor;
+    cursor->coldata = coldata;
+    return cursor;
+}
+
+/**
  * Grabs the results obtained from the MongoDB cursor and loads them into
  * in-memory arrays.
  *
