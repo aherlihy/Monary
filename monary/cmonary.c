@@ -540,6 +540,9 @@ int monary_load_length_value(const bson_iter_t* bsonit,
         case BSON_TYPE_UTF8:
         case BSON_TYPE_CODE:
             discard = bson_iter_utf8(bsonit, &length);
+            for (length = 0; *discard; length++) {
+                discard = bson_utf8_next_char(discard);
+            }
             break;
         case BSON_TYPE_ARRAY:
         case BSON_TYPE_DOCUMENT:
