@@ -1,7 +1,7 @@
 Version 0.3.0
 -------------
 
-    * Upgraded to latest version of Mongo C driver (0.98.0).
+    * Upgraded to latest version of Mongo C driver (1.0.0).
 
     * monary_connect() now takes a MongoDB URI or a hostname and
       port. (See http://docs.mongodb.org/manual/reference/connection-string/
