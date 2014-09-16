@@ -9,7 +9,7 @@ from profile import profile
 
 def do_pymongo_query():
 
-    c = pymongo.Connection("localhost")
+    c = pymongo.MongoClient()
     collection = c.monary_test.collection
 
     with profile("pymongo query"):
