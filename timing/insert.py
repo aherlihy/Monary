@@ -18,7 +18,7 @@ def do_insert():
     BATCH_SIZE = 1000
     # 4500 batches * 1000 per batch = 4.5 million records
 
-    c = pymongo.Connection("localhost")
+    c = pymongo.MongoClient()
     collection = c.monary_test.collection
 
     with profile("insert"):
