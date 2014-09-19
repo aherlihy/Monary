@@ -62,10 +62,13 @@ class BuildCMongoDriver(Command):
     def run(self):
         try:
             os.chdir(CMONGO_SRC)
+            env = os.environ.copy()
+            env.setdefault('CFLAGS', '')
+            env['CFLAGS'] += ' -fPIC'
             status = subprocess.call(["./configure", "--enable-static",
                                       "--without-documentation",
                                       "--disable-maintainer-mode",
-                                      "--disable-tests", "--disable-examples"])
+                                      "--disable-tests", "--disable-examples"], env=env)
             if status != 0:
                 raise BuildException("configure script failed with exit status %d" % status)
 
