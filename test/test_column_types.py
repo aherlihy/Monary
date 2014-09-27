@@ -20,7 +20,7 @@ if PY3:
 NUM_TEST_RECORDS = 100
 
 def get_pymongo_connection():
-    return pymongo.Connection("127.0.0.1")
+    return pymongo.MongoClient()
 
 def get_monary_connection():
     return monary.Monary("127.0.0.1")
