@@ -31,7 +31,7 @@ First, let's create 3.5 million rows of test data:
     BATCH_SIZE = 1000
     # 3500 batches * 1000 per batch = 3.5 million records
 
-    c = pymongo.Connection("localhost")
+    c = pymongo.MongoClient()
     collection = c.mydb.collection
 
     for i in xrange(NUM_BATCHES):
@@ -53,7 +53,7 @@ Here's an example that uses numpy arrays:
     import numpy
     import pymongo
 
-    c = pymongo.Connection("localhost")
+    c = pymongo.MongoClient()
     collection = c.mydb.collection
     num = collection.count()
     arrays = [ numpy.zeros(num) for i in range(5) ]
