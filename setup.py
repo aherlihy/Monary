@@ -40,7 +40,7 @@ else:
 compiler = new_compiler(**compiler_kw)
 
 MONARY_DIR = "monary"
-CMONGO_SRC = "mongodb-mongo-c-driver-0.98.0"
+CMONGO_SRC = "mongodb-mongo-c-driver-1.0.0"
 CFLAGS = ["-fPIC", "-O2"]
 
 if not DEBUG:
