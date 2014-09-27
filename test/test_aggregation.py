@@ -10,7 +10,7 @@ NUM_TEST_RECORDS = 5000
 
 
 def setup():
-    with pymongo.Connection("127.0.0.1") as c:
+    with pymongo.MongoClient() as c:
         c.drop_database("monary_test")
 
         for i in range(NUM_TEST_RECORDS):
@@ -29,7 +29,7 @@ def setup():
 
 
 def teardown():
-    with pymongo.Connection("127.0.0.1") as c:
+    with pymongo.MongoClient() as c:
         c.drop_database("monary_test")
 
 

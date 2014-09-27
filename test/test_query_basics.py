@@ -14,7 +14,7 @@ NUM_TEST_RECORDS = 5000
 
 
 def get_pymongo_connection():
-    return pymongo.Connection("127.0.0.1")
+    return pymongo.MongoClient()
 
 
 def get_monary_connection():
