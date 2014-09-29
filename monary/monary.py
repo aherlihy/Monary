@@ -44,7 +44,7 @@ class bson_error_t(Structure):
     ]
 
 
-class MonaryError(RuntimeError):
+class MonaryError(Exception):
     pass
 
 
