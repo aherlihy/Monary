@@ -1,0 +1,33 @@
+========
+ Monary
+========
+
+Copyright 2011-2014 David J. C. Beach
+
+About
+-----
+
+Monary is a special purpose MongoDB interface for Python which makes use
+of the Mongo C driver.
+
+License
+-------
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+This software includes a copy of MongoDB C Driver from 10gen, located in
+the "mongodb-mongo-c-driver-xxxxxxxx" directory.  For licensing information
+on this included, please see the APACHE-2.0.txt and README files in the
+associated directory.
+
+All other files are Copyright David J. C. Beach, as indicated above.
