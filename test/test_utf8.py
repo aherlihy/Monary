@@ -2,20 +2,23 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import sys
-
 import pymongo
 
 import monary
 
 
+expected = ["aあ".decode('utf-8'),
+            "âéÇ".decode('utf-8'),
+            "αλΩ".decode('utf-8'),
+            "çœ¥¨≠".decode('utf-8')]
+
+
 def setup():
     with pymongo.MongoClient() as c:
         c.drop_database("monary_test")
-        c.monary_test.data.insert({"test": u"aあ", "sequence": 1})
-        c.monary_test.data.insert({"test": u"âéÇ", "sequence": 2})
-        c.monary_test.data.insert({"test": u"αλΩ", "sequence": 3})
-        c.monary_test.data.insert({"test": u"çœ¥¨≠", "sequence": 4})
+        c.monary_test.data.insert(
+            {"test": my_str, "sequence": i}
+            for i, my_str in enumerate(expected))
 
 
 def teardown():
@@ -30,10 +33,17 @@ def test_utf8():
             ["string:12", "length", "size"], sort="sequence")
         assert (lens < sizes).all()
 
-    expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]
-    for x, l, y, in zip(data, lens, expected):
-        if sys.version_info[0] >= 3:
-            # Python 3
-            x = x.decode('utf8')
-        assert x == y
-        assert l == len(y)
+    for monary_bytes, monary_len, expected_str, in zip(data, lens, expected):
+        monary_str = monary_bytes.decode('utf8')
+
+        # We got the same string out from Monary as we inserted w/ PyMongo.
+        assert monary_str == expected_str
+
+        # Monary's idea of "length" == len(string).
+        assert monary_len == len(expected_str)
+
+setup()
+try:
+    test_utf8()
+finally:
+    teardown()
