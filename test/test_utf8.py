@@ -41,9 +41,3 @@ def test_utf8():
 
         # Monary's idea of "length" == len(string).
         assert monary_len == len(expected_str)
-
-setup()
-try:
-    test_utf8()
-finally:
-    teardown()
