@@ -2,15 +2,17 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import sys
+
 import pymongo
 
 import monary
 
 
-expected = ["aあ".decode('utf-8'),
-            "âéÇ".decode('utf-8'),
-            "αλΩ".decode('utf-8'),
-            "çœ¥¨≠".decode('utf-8')]
+expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]
+if sys.version_info[0] < 3:
+    # Python 2: convert from str to unicode.
+    expected = [s.decode('utf-8') for s in expected]
 
 
 def setup():
