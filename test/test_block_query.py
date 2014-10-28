@@ -2,6 +2,8 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import pymongo
+from pymongo.errors import ConnectionFailure, OperationFailure
+from nose import SkipTest
 
 import monary
 
@@ -9,6 +11,12 @@ try:
     xrange
 except NameError:
     xrange = range
+
+try:
+    with pymongo.MongoClient() as c:
+        c.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as e:
+    raise SkipTest("Unable to connect to mongod: ", str(e))
 
 NUM_TEST_RECORDS = 5000
 BLOCK_SIZE = 32 * 50
