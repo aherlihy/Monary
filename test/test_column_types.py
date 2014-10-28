@@ -9,6 +9,8 @@ import sys
 import bson
 import numpy
 import pymongo
+from pymongo.errors import ConnectionFailure, OperationFailure
+from nose import SkipTest
 
 import monary
 from monary.monary import OrderedDict, mvoid_to_bson_id
@@ -18,6 +20,13 @@ if PY3:
     xrange = range
 
 NUM_TEST_RECORDS = 100
+
+try:
+    with pymongo.MongoClient() as c:
+        c.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as e:
+    raise SkipTest("Unable to connect to mongod: ", str(e))
+
 
 def get_pymongo_connection():
     return pymongo.MongoClient()
