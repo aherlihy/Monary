@@ -3,10 +3,18 @@
 
 import numpy
 import pymongo
+from pymongo.errors import ConnectionFailure, OperationFailure
+from nose import SkipTest
 
 import monary
 
 NUM_TEST_RECORDS = 5000
+
+try:
+    with pymongo.MongoClient() as c:
+        c.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as e:
+    raise SkipTest("Unable to connect to mongod: ", str(e))
 
 
 def setup():
