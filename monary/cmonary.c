@@ -43,6 +43,16 @@ enum {
     LAST_TYPE = 20       // BSON type code as per the BSON specificaion
 };
 
+
+/**
+ * Helper function to set the fields of bson_error_t
+ */
+void monary_error(bson_error_t* err, char* message) {
+    err->code = 0;
+    err->domain = 0;
+    bson_snprintf(err->message, sizeof(err->message), "%s", message);
+}
+
 /**
  * Controls the logging performed by libmongoc.
  */
@@ -77,24 +87,25 @@ void monary_cleanup(void) {
  * Makes a new connection to a MongoDB server and database.
  *
  * @param uri A MongoDB URI, as per mongoc_uri(7).
+ * @param err bson_error_t that holds error information in case of failure
  *
  * @return A pointer to a mongoc_client_t, or NULL if the connection attempt
  * was unsuccessful.
  */
-mongoc_client_t* monary_connect(const char* uri) {
+mongoc_client_t* monary_connect(const char* uri, bson_error_t* err) {
     mongoc_client_t* client;
     if (!uri) {
+        monary_error(err, "empty URI passed to monary_connect");
         return NULL;
     }
 
     DEBUG("Attempting connection to: %s", uri);
     client = mongoc_client_new(uri);
-    if (client) {
-        DEBUG("%s", "Connection successful");
+    if (!client) {
+        monary_error(err, "cmongo failed to parse URI in monary_connect");
+        return NULL;
     }
-    else {
-        DEBUG("An error occurred while attempting to connect to %s", uri);
-    }
+    DEBUG("%s", "Connection successful");
     return client;
 }
 
@@ -200,7 +211,6 @@ monary_column_data* monary_alloc_column_data(unsigned int num_columns,
     monary_column_data* result;
     monary_column_item* columns;
 
-    if(num_columns > MONARY_MAX_NUM_COLUMNS) { return NULL; }
     result = (monary_column_data*) malloc(sizeof(monary_column_data));
     columns = (monary_column_item*) calloc(num_columns, sizeof(monary_column_item));
 
@@ -217,8 +227,6 @@ int monary_free_column_data(monary_column_data* coldata)
 {
     int i;
     monary_column_item* col;
-
-    if(coldata == NULL || coldata->columns == NULL) { return 0; }
 
     for(i = 0; i < coldata->num_columns; i++) {
         col = coldata->columns + i;
@@ -247,8 +255,9 @@ int monary_free_column_data(monary_column_data* coldata)
  * @param mask A pointer to the new masked array, which cannot be NULL. It is a
  * programming error to have a masked array different in length from the
  * storage array.
+ * @param err bson_error_t that holds error information in case of failure
  *
- * @return 1 if the modification was performed successfully; 0 otherwise.
+ * @return 1 if the modification was performed successfully; -1 otherwise.
  */
 int monary_set_column_item(monary_column_data* coldata,
                            unsigned int colnum,
@@ -256,19 +265,44 @@ int monary_set_column_item(monary_column_data* coldata,
                            unsigned int type,
                            unsigned int type_arg,
                            void* storage,
-                           unsigned char* mask)
+                           unsigned char* mask,
+                           bson_error_t* err)
 {
     int len;
     monary_column_item* col;
 
-    if(coldata == NULL) { return 0; }
-    if(colnum >= coldata->num_columns) { return 0; }
-    if(type == TYPE_UNDEFINED || type > LAST_TYPE) { return 0; }
-    if(storage == NULL) { return 0; }
-    if(mask == NULL) { return 0; }
+    if(coldata == NULL) {
+        monary_error(err, "null argument passed to monary_set_column_item: "
+                     "coldata");
+        return -1;
+    }
+    if(colnum >= coldata->num_columns) {
+        monary_error(err, "colnum exceeded number of columns in "
+                     "monary_set_column_item");
+        return -1;
+    }
+    if(type == TYPE_UNDEFINED || type > LAST_TYPE) {
+        monary_error(err, "column type passed to monary_set_column_item was "
+                     "undefined");
+        return -1;
+    }
+    if(storage == NULL) {
+        monary_error(err, "null argument passed to monary_set_column_item: "
+                    "storage");
+        return -1;
+    }
+    if(mask == NULL) {
+        monary_error(err, "null argument passed to monary_set_column_item: "
+                     "mask");
+        return -1;
+    }
     
     len = strlen(field);
-    if(len > MONARY_MAX_STRING_LENGTH) { return 0; }
+    if(len > MONARY_MAX_STRING_LENGTH) {
+        monary_error(err, "field name length exceeded maximum in "
+                     "monary_set_column_item");
+        return -1;
+    }
     
     col = coldata->columns + colnum;
 
@@ -638,7 +672,8 @@ int monary_bson_to_arrays(monary_column_data* coldata,
         return -1;
     }
     if (row > coldata->num_rows) {
-        DEBUG("Tried to load row %d, but that exceeds the maximum # of rows (%d) ", row, coldata->num_rows);
+        DEBUG("Tried to load row %d, but that exceeds the maximum # of rows (%d) ",
+              row, coldata->num_rows);
         return -1;
     }
 
@@ -670,14 +705,15 @@ int monary_bson_to_arrays(monary_column_data* coldata,
  *
  * @param collection The MongoDB collection to query against.
  * @param query A pointer to a BSON buffer representing the query.
+ * @param err bson_error_t that holds error information in case of failure
  *
  * @return If unsuccessful, returns -1; otherwise, returns the number of
  * documents counted.
  */
 int64_t monary_query_count(mongoc_collection_t* collection,
-                           const uint8_t* query)
+                           const uint8_t* query,
+                           bson_error_t* err)
 {
-    bson_error_t error;     // A location for BSON errors
     bson_t query_bson;      // The query converted to BSON format
     int64_t total_count;    // The number of documents counted
     uint32_t query_size;    // Length of the query in bytes
@@ -689,7 +725,8 @@ int64_t monary_query_count(mongoc_collection_t* collection,
     if (!bson_init_static(&query_bson,
                           query,
                           query_size)) {
-        DEBUG("%s", "Failed to initialize raw BSON query");
+        monary_error(err, "failed to initialize raw BSON query in"
+                     "monary_query_count");
         return -1;
     }
     
@@ -700,11 +737,8 @@ int64_t monary_query_count(mongoc_collection_t* collection,
                                           0,
                                           0,
                                           NULL,
-                                          &error);
+                                          err);
     bson_destroy(&query_bson);
-    if (total_count < 0) {
-        DEBUG("error: %d.%d %s", error.domain, error.code, error.message);
-    }
 
     return total_count;
 }
@@ -746,6 +780,7 @@ void monary_get_bson_fields_list(monary_column_data* coldata,
  * @param select_fields If truthy, select exactly the fields from the database
  * that match the fields in coldata. If false, the query will find and return
  * all fields from matching documents.
+ * @param err bson_error_t that holds error information in case of failure
  *
  * @return If successful, a Monary cursor that should be freed with
  * monary_close_query() when no longer in use. If unsuccessful, or if an
@@ -756,7 +791,8 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
                                  uint32_t limit,
                                  const uint8_t* query,
                                  monary_column_data* coldata,
-                                 int select_fields)
+                                 int select_fields,
+                                 bson_error_t* err)
 {
     bson_t query_bson;          // BSON representing the query to perform
     bson_t* fields_bson;        // BSON holding the fields to select
@@ -766,7 +802,7 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
 
     // Sanity checks
     if (!collection || !query || !coldata) {
-        DEBUG("%s", "Given a NULL param.");
+        monary_error(err, "null parameter passed to monary_init_query");
         return NULL;
     }
 
@@ -776,7 +812,8 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     if (!bson_init_static(&query_bson,
                           query,
                           query_size)) {
-        DEBUG("%s", "Failed to initialize raw BSON query");
+        monary_error(err, "failed to initialize raw bson query in "
+                     "monary_init_query");
         return NULL;
     }
     fields_bson = NULL;
@@ -786,7 +823,8 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     if(select_fields) {
         fields_bson = bson_new();
         if (!fields_bson) {
-            DEBUG("%s", "An error occurred while allocating memory for BSON data");
+            monary_error(err, "error occurred while allocating memory for BSON "
+                         "data in monary_init_query");
             return NULL;
         }
         monary_get_bson_fields_list(coldata, fields_bson);
@@ -807,7 +845,8 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     if(fields_bson) { bson_destroy(fields_bson); }
 
     if (!mcursor) {
-        DEBUG("%s", "An error occurred with the query");
+        monary_error(err, "error occurred within mongoc_collection_find in "
+                     "monary_init_query");
         return NULL;
     }
 
@@ -824,6 +863,7 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
  * @param collection The MongoDB collection to query against.
  * @param pipeline A pointer to a BSON buffer representing the pipeline.
  * @param coldata The column data to store the results in.
+ * @param err bson_error_t that holds error information in case of failure
  *
  * @return If successful, a Monary cursor that should be freed with
  * monary_close_query() when no longer in use. If unsuccessful, or if an invalid
@@ -831,7 +871,8 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
  */
 monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
                                      const uint8_t* pipeline,
-                                     monary_column_data* coldata)
+                                     monary_column_data* coldata,
+                                     bson_error_t* err)
 {
     bson_t pl_bson;
     int32_t pl_size;
@@ -840,11 +881,11 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
 
     // Sanity checks
     if (!collection) {
-        DEBUG("%s", "Invalid collection");
+        monary_error(err, "invalid collection passed to monary_init_aggregate");
         return NULL;
     }
     else if (!pipeline) {
-        DEBUG("%s", "Invalid pipeline");
+        monary_error(err, "invalid pipeline passed to monary_init_aggregate");
         return NULL;
     }
 
@@ -854,7 +895,8 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
     if (!bson_init_static(&pl_bson,
                           pipeline,
                           pl_size)) {
-        DEBUG("%s", "Failed to initialize raw BSON pipeline");
+        monary_error(err, "failed to initialize raw BSON pipeline in "
+                     "monary_init_aggregate");
         return NULL;
     }
 
@@ -869,7 +911,8 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
     bson_destroy(&pl_bson);
 
     if (!mcursor) {
-        DEBUG("%s", "An error occurred with the aggregation");
+        monary_error(err, "error occurred in mongoc_collection_aggregate in "
+                     "monary_init_aggregate");
         return NULL;
     }
 
@@ -885,12 +928,12 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
  *
  * @param cursor A pointer to a Monary cursor, which contains both a MongoDB
  * cursor and Monary column data that stores the retrieved information.
+ * @param err bson_error_t that holds error information in case of failure
  *
  * @return The number of rows loaded into memory.
  */
-int monary_load_query(monary_cursor* cursor)
+int monary_load_query(monary_cursor* cursor, bson_error_t* err)
 {
-    bson_error_t error;             // A location for errors
     const bson_t* bson;             // Pointer to an immutable BSON buffer
     int num_masked;
     int row;
@@ -903,9 +946,8 @@ int monary_load_query(monary_cursor* cursor)
     row = 0;                    // Iterator var over the lengths of the arrays
     num_masked = 0;             // The number of failed loads
     
-    // read result values
     while(row < coldata->num_rows
-            && !mongoc_cursor_error(mcursor, &error)
+            && !mongoc_cursor_error(mcursor, err)
             && mongoc_cursor_next(mcursor, &bson)) {
 
 #ifndef NDEBUG
@@ -918,8 +960,8 @@ int monary_load_query(monary_cursor* cursor)
         ++row;
     }
 
-    if (mongoc_cursor_error(mcursor, &error)) {
-        DEBUG("error: %d.%d %s", error.domain, error.code, error.message);
+    if (mongoc_cursor_error(mcursor, err)) {
+        return -1;
     }
 
     total_values = row * coldata->num_columns;
