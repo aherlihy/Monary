@@ -30,6 +30,8 @@ except ImportError:
 import numpy
 import bson
 
+from .write_concern import WriteConcern
+
 cmonary = None
 
 ERROR_LEN = 504
@@ -71,6 +73,7 @@ CTYPE_CODES = {
     "I": c_int,       # int
     "U": c_uint,      # unsigned int
     "L": c_long,      # long
+    "B": c_bool,      # bool
     "0": None,        # None/void
 }
 
@@ -91,6 +94,9 @@ FUNCDEFS = [
     "monary_init_aggregate:PPPP:P",
     "monary_load_query:PP:I",
     "monary_close_query:P:0",
+    "monary_create_write_concern:IIBBS:P",
+    "monary_destroy_write_concern:P:0",
+    "monary_insert:PPPPP:0"
 ]
 
 MAX_COLUMNS = 1024
@@ -113,7 +119,7 @@ atexit.register(cmonary.monary_cleanup)
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id":        (1, "<V12"),
+    "id":        (1, numpy.dtype("<V12")),
     "bool":      (2, numpy.bool),
     "int8":      (3, numpy.int8),
     "int16":     (4, numpy.int16),
@@ -175,7 +181,7 @@ def get_monary_numpy_type(orig_typename):
             raise ValueError("%r must have an explicit typearg with nonzero length "
                              "(use 'string:20', for example)" % type_name)
         type_num, numpy_type_code = MONARY_TYPES[type_name]
-        numpy_type = "%s%i" % (numpy_type_code, type_arg)
+        numpy_type = numpy.dtype("%s%i" % (numpy_type_code, type_arg))
     else:
         type_num, numpy_type = MONARY_TYPES[type_name]
     return type_num, type_arg, numpy_type
@@ -215,6 +221,29 @@ def mvoid_to_bson_id(mvoid):
     else:
         # Python 2.6 / 2.7
         return bson.ObjectId(str(mvoid))
+
+
+def validate_insert_fields(fields):
+    """Validate field names for insertion.
+
+       :param fields: a list of field names
+
+       :returns: None
+    """
+    for f in fields:
+        if f.endswith('.'):
+            raise ValueError("invalid fieldname: %r, must not end in '.'" % f)
+        if '$' in f:
+            raise ValueError("invalid fieldname: %r, must not contain '$'" % f)
+
+    if len(fields) != len(set(fields)):
+        raise ValueError("field names must all be unique")
+
+    for f1 in fields:
+        for f2 in fields:
+            if f1 != f2 and f1.startswith(f2) and f1[len(f2)] == '.':
+                raise ValueError("fieldname %r conflicts with nested-document "
+                                 "fieldname %r" % (f2, f1))
 
 
 def get_ordering_dict(obj):
@@ -584,6 +613,99 @@ class Monary(object):
         finally:
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
+
+    def insert(self, db, coll, params, write_concern=None):
+        """Performs an insertion of data from arrays.
+
+           :param db: name of database
+           :param coll: name of the collection to insert into
+           :param params: list of MonaryParams to be inserted
+           :param write_concern: (optional) a WriteConcern object.
+
+           :returns: A numpy array of the inserted documents ObjectIds. Masked
+                     values indicate documents that failed to be inserted.
+           :rtype: numpy.ma.core.MaskedArray
+
+           .. note:: Params will be sorted by field before insertion. To ensure
+                     that _id is the first filled in all generated documents
+                     and that nested keys are consecutive, all keys will be
+                     sorted alphabetically before the insertions are performed.
+                     The corresponding types and data will be sorted the same
+                     way to maintain the original correspondence.
+        """
+        if len(params) == 0:
+            raise ValueError("cannot do an empty insert")
+
+        validate_insert_fields(list(map(lambda p: p.field, params)))
+
+        # To ensure that _id is the first key, the string "_id" is mapped
+        # to chr(0). This will put "_id" in front of any other field.
+        params = sorted(
+            params, key=lambda p: p.field if p.field != "_id" else chr(0))
+
+        if params[0].field == "_id" and params[0].array.mask.any():
+            raise ValueError("the _id array must not have any masked values")
+
+        if len(set(len(p) for p in params)) != 1:
+            raise ValueError("all given arrays must be of the same length")
+
+        collection = None
+        try:
+            coldata = cmonary.monary_alloc_column_data(len(params),
+                                                       len(params[0]))
+            for i, param in enumerate(params):
+                data_p = param.array.data.ctypes.data_as(c_void_p)
+                mask_p = param.array.mask.ctypes.data_as(c_void_p)
+                cmonary.monary_set_column_item(coldata, i,
+                                               param.field.encode("utf-8"),
+                                               param.cmonary_type,
+                                               param.cmonary_type_arg,
+                                               data_p, mask_p)
+
+            # Create a new column for the ids to be returned
+            id_data = cmonary.monary_alloc_column_data(1, len(params[0]))
+
+            if params[0].field == "_id":
+                # If the user specifies "_id", it will be sorted to the front.
+                ids = numpy.copy(params[0].array)
+                cmonary_type = params[0].cmonary_type
+                cmonary_type_arg = params[0].cmonary_type_arg
+                numpy_type = params[0].numpy_type
+            else:
+                # Allocate a single column to return the generated ObjectIds.
+                cmonary_type, cmonary_type_arg, numpy_type = \
+                        get_monary_numpy_type("id")
+                ids = numpy.zeros(len(params[0]), dtype=numpy_type)
+
+            mask = numpy.ones(len(params[0]))
+            ids = numpy.ma.masked_array(ids, mask)
+            cmonary.monary_set_column_item(id_data, 0,
+                                           "_id".encode("utf-8"),
+                                           cmonary_type, cmonary_type_arg,
+                                           ids.data.ctypes.data_as(c_void_p),
+                                           ids.mask.ctypes.data_as(c_void_p))
+
+            collection = self._get_collection(db, coll)
+            if collection is None:
+                raise ValueError("unable to get the collection")
+
+            if write_concern is None:
+                write_concern = WriteConcern()
+
+            cmonary.monary_insert(collection, coldata, id_data,
+                                  self._connection,
+                                  write_concern.get_c_write_concern())
+
+            return ids
+        finally:
+            if write_concern is not None:
+                write_concern.destroy_c_write_concern()
+            if coldata is not None:
+                cmonary.monary_free_column_data(coldata)
+            if id_data is not None:
+                cmonary.monary_free_column_data(id_data)
+            if collection is not None:
+                cmonary.monary_destroy_collection(collection)
 
     def aggregate(self, db, coll, pipeline, fields, types, limit=0,
                   do_count=True):
