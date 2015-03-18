@@ -157,17 +157,6 @@ def test_monary_query_bson():
                     ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
 
-def test_monary_query1():
-    # Test should fail in monary_load_query
-    with assertraises(monary.monary.MonaryError,
-                      "Can't canonicalize query: BadValue bad skip value in "
-                      "query"):
-        with monary.Monary() as m:
-            m.query("test", "collection", {},
-                    ['x1', 'x2', 'x3', 'x4', 'x5'], ["float64"] * 5,
-                    offset=-1)
-
-
 def test_monary_aggregate():
     # Test should fail in monary_load_query
     with assertraises(monary.monary.MonaryError,
