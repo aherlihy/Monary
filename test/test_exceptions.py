@@ -1,34 +1,17 @@
-import contextlib
-
 from bson import InvalidDocument
 
 import monary
-
-
-@contextlib.contextmanager
-def assertraises(error_class, message):
-    try:
-        yield
-    except Exception as e:
-        if not isinstance(e, error_class):
-            raise Exception("Failed: wrong error thrown: expected %s but got %s"
-                            % (error_class, e))
-        elif message not in str(e):
-            raise Exception("Failed: wrong error string: expected %s but got %s"
-                            % (message, e.message))
-    else:
-        raise Exception("Failed: no error thrown")
-
+import test_helpers
 
 def test_get_monary_numpy_type1():
-    with assertraises(ValueError, "Too many parts in type"):
+    with test_helpers.assertraises(ValueError, "Too many parts in type"):
         with monary.Monary() as m:
             m.query("test", "collection", {},
                     ["x1", "x2", "x3", "x4", "x5"], ["string:6:4"] * 5)
 
 
 def test_get_monary_numpy_type2():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Unable to parse type argument"):
         with monary.Monary() as m:
             m.query("test", "collection", {},
@@ -36,7 +19,7 @@ def test_get_monary_numpy_type2():
 
 
 def test_get_monary_numpy_type3():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Unknown typename"):
         with monary.Monary() as m:
             m.query("test", "collection", {},
@@ -44,7 +27,7 @@ def test_get_monary_numpy_type3():
 
 
 def test_get_monary_numpy_type4():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "'string' must have an explicit typearg "
                       "with nonzero length"):
         with monary.Monary() as m:
@@ -53,7 +36,7 @@ def test_get_monary_numpy_type4():
 
 
 def test_get_full_query1():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Invalid ordering: should be str or list of (column, "
                       "direction) pairs"):
         with monary.Monary() as m:
@@ -63,7 +46,7 @@ def test_get_full_query1():
 
 
 def test_get_full_query2():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Invalid ordering: should be str or list of (column, "
                       "direction) pairs"):
         with monary.Monary() as m:
@@ -73,7 +56,7 @@ def test_get_full_query2():
 
 
 def test_monary_connect3():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "You cannot have a password with no username"):
         with monary.Monary(password='mng') as m:
             m.query("test", "collection", {},
@@ -81,7 +64,7 @@ def test_monary_connect3():
 
 
 def test_make_column_data1():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Number of fields and types do not match"):
         with monary.Monary() as m:
             m.query("test", "collection", {},
@@ -89,7 +72,7 @@ def test_make_column_data1():
 
 
 def test_make_column_data2():
-    with assertraises(ValueError,
+    with test_helpers.assertraises(ValueError,
                       "Number of fields exceeds maximum of 1024"):
         with monary.Monary() as m:
             m.query("test", "collection", {},
@@ -97,7 +80,7 @@ def test_make_column_data2():
 
 
 def test_make_column_data3():
-    with assertraises(ValueError, "exceeds maximum of 1024"):
+    with test_helpers.assertraises(ValueError, "exceeds maximum of 1024"):
         with monary.Monary() as m:
             st = "x" * 1025
             m.query("test", "collection", {},
@@ -105,7 +88,7 @@ def test_make_column_data3():
 
 
 def test_get_pipeline():
-    with assertraises(TypeError,
+    with test_helpers.assertraises(TypeError,
                       "Pipeline must be a dict or a list"):
         with monary.Monary() as m:
             m.aggregate("test", "collection", "this is not a list", {},
@@ -113,14 +96,14 @@ def test_get_pipeline():
 
 
 def test_monary_connect1():
-    with assertraises(monary.monary.MonaryError, "Failed to resolve"):
+    with test_helpers.assertraises(monary.monary.MonaryError, "Failed to resolve"):
         with monary.Monary('mongodb://asfadsf') as m:
             m.query("test", "collection", {},
                     ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
 
 def test_monary_connect2():
-    with assertraises(monary.monary.MonaryError,
+    with test_helpers.assertraises(monary.monary.MonaryError,
                       "Failed to authenticate credentials"):
         with monary.Monary(username='mng') as m:
             m.query("test", "collection", {},
@@ -128,20 +111,20 @@ def test_monary_connect2():
 
 
 def test_monary_count1():
-    with assertraises(monary.monary.MonaryError, "Invalid ns"):
+    with test_helpers.assertraises(monary.monary.MonaryError, "Invalid ns"):
         with monary.Monary() as m:
             m.query("", "collection", {},
                     ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
 
 def test_monary_count2():
-    with assertraises(monary.monary.MonaryError, "Invalid ns [not a db.$cmd]"):
+    with test_helpers.assertraises(monary.monary.MonaryError, "Invalid ns [not a db.$cmd]"):
         with monary.Monary() as m:
             m.count("not a db", "")
 
 
 def test_monary_count3():
-    with assertraises(monary.monary.MonaryError,
+    with test_helpers.assertraises(monary.monary.MonaryError,
                       "Failed to handshake and validate TLS certificate"):
         with monary.Monary("mongodb://localhost:27017/?ssl=true") as m:
             m.query("test", "collection", {},
@@ -150,7 +133,7 @@ def test_monary_count3():
 
 def test_monary_query_bson():
     # Tase should fail in monary_init_query
-    with assertraises(InvalidDocument,
+    with test_helpers.assertraises(InvalidDocument,
                       "documents must have only string keys, key was 0"):
         with monary.Monary() as m:
             m.query("test", "collection", {0: 0},
@@ -159,7 +142,7 @@ def test_monary_query_bson():
 
 def test_monary_aggregate():
     # Test should fail in monary_load_query
-    with assertraises(monary.monary.MonaryError,
+    with test_helpers.assertraises(monary.monary.MonaryError,
                       "A pipeline stage specification object must contain "
                       "exactly one field"):
         with monary.Monary() as m:
@@ -170,7 +153,7 @@ def test_monary_aggregate():
 
 def test_monary_aggregate2():
     # Test should fail in monary_load_query
-    with assertraises(monary.monary.MonaryError,
+    with test_helpers.assertraises(monary.monary.MonaryError,
                       "exception: Unrecognized pipeline stage name:"):
         with monary.Monary() as m:
             m.aggregate("test", "collection", {"hi": "you"},
