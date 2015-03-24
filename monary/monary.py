@@ -96,7 +96,7 @@ FUNCDEFS = [
     "monary_close_query:P:0",
     "monary_create_write_concern:IIBBS:P",
     "monary_destroy_write_concern:P:0",
-    "monary_insert:PPPPP:0"
+    "monary_insert:PPPPPP:0"
 ]
 
 MAX_COLUMNS = 1024
@@ -119,7 +119,7 @@ atexit.register(cmonary.monary_cleanup)
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id":        (1, numpy.dtype("<V12")),
+    "id":        (1, numpy.dtype("<V12")), #TODO: needed?
     "bool":      (2, numpy.bool),
     "int8":      (3, numpy.int8),
     "int16":     (4, numpy.int16),
@@ -181,7 +181,7 @@ def get_monary_numpy_type(orig_typename):
             raise ValueError("%r must have an explicit typearg with nonzero length "
                              "(use 'string:20', for example)" % type_name)
         type_num, numpy_type_code = MONARY_TYPES[type_name]
-        numpy_type = numpy.dtype("%s%i" % (numpy_type_code, type_arg))
+        numpy_type = numpy.dtype("%s%i" % (numpy_type_code, type_arg)) #TODO: needed?
     else:
         type_num, numpy_type = MONARY_TYPES[type_name]
     return type_num, type_arg, numpy_type
@@ -312,9 +312,19 @@ class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
     
     def __init__(self, host="localhost", port=27017, username=None,
-                 password=None, database=None, options={}):
-        """Initialize this connection with the given host and port.
-        
+                 password=None, database=None, pem_file=None,
+                 pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
+                 weak_cert_validation=True, options={}):
+        """
+
+            An example of initializing monary with a port and hostname:
+            >>> m = Monary(localhost, 27017)
+            An example of initializing monary with a URI and SSL parameters:
+            >>> m = Monary("mongodb://localhost:27017/?ssl=true",
+            ...             pem_file='client.pem', ca_file='ca.pem',
+            ...             crl_file='crl.pem')
+
+
            :param host: either host name (or IP) to connect to, or full URI
            :param port: port number of running MongoDB service on host
            :param username: An optional username for authentication.
@@ -323,15 +333,26 @@ class Monary(object):
            specifies a username and password. If this is not specified but
            credentials exist, this defaults to the "admin" database. See
            mongoc_uri(7).
+           :param pem_file: SSL certificate and key file
+           :param pem_pwd: Passphrase for encrypted key file
+           :param ca_file: Certificate authority file
+           :param ca_dir: Directory for certificate authority files
+           :param crl_file: Certificate revocation list file
+           :param weak_cert_validation: bypass validation
            :param options: Connection-specific options as a dict.
         """
 
         self._cmonary = cmonary
         self._connection = None
-        self.connect(host, port, username, password, database, options)
+        self.connect(host, port, username, password, database,
+                     pem_file, pem_pwd, ca_file, ca_dir, crl_file,
+                     weak_cert_validation, options)
+
 
     def connect(self, host="localhost", port=27017, username=None,
-                password=None, database=None, options={}):
+                password=None, database=None, pem_file=None,
+                pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
+                weak_cert_validation=False, options={}):
         """Connects to the given host and port.
 
            :param host: either host name (or IP) to connect to, or full URI
@@ -342,6 +363,12 @@ class Monary(object):
            specifies a username and password. If this is not specified but
            credentials exist, this defaults to the "admin" database. See
            mongoc_uri(7).
+           :param pem_file: SSL certificate and key file
+           :param pem_pwd: Passphrase for encrypted key file
+           :param ca_file: Certificate authority file
+           :param ca_dir: Directory for certificate authority files
+           :param crl_file: Certificate revocation list file
+           :param weak_cert_validation: bypass validation
            :param options: Connection-specific options as a dict.
 
            :returns: True if successful; false otherwise.
@@ -372,11 +399,24 @@ class Monary(object):
                 uri.append("?%s" % urlencode(options))
             uri = "".join(uri)
 
-        # Attempt the connection
+        if sys.version >= "3":
+            pem_file = bytes(pem_file, "ascii") if pem_file is not None else None
+            pem_pwd = bytes(pem_pwd, "ascii") if pem_pwd is not None else None
+            ca_file = bytes(ca_file, "ascii") if ca_file is not None else None
+            ca_dir = bytes(ca_dir, "ascii") if ca_dir is not None else None
+            crl_file = bytes(crl_file, "ascii") if crl_file is not None else None
 
+        # Attempt the connection
         err = bson_error_t(0,0,"")
-        self._connection = cmonary.monary_connect(uri.encode('ascii'),
-                                                  byref(err))
+        self._connection = cmonary.monary_connect(
+                uri.encode('ascii'),
+                c_char_p(pem_file),
+                c_char_p(pem_pwd),
+                c_char_p(ca_file),
+                c_char_p(ca_dir),
+                c_char_p(crl_file),
+                c_bool(weak_cert_validation),
+                byref(err))
         if self._connection is None:
             raise MonaryError(err.message)
 
@@ -633,6 +673,9 @@ class Monary(object):
                      The corresponding types and data will be sorted the same
                      way to maintain the original correspondence.
         """
+
+        err = bson_error_t(0,0,'')
+
         if len(params) == 0:
             raise ValueError("cannot do an empty insert")
 
@@ -650,17 +693,20 @@ class Monary(object):
             raise ValueError("all given arrays must be of the same length")
 
         collection = None
+        id_data = None
         try:
             coldata = cmonary.monary_alloc_column_data(len(params),
                                                        len(params[0]))
             for i, param in enumerate(params):
                 data_p = param.array.data.ctypes.data_as(c_void_p)
                 mask_p = param.array.mask.ctypes.data_as(c_void_p)
-                cmonary.monary_set_column_item(coldata, i,
+
+                if cmonary.monary_set_column_item(coldata, i,
                                                param.field.encode("utf-8"),
                                                param.cmonary_type,
                                                param.cmonary_type_arg,
-                                               data_p, mask_p)
+                                               data_p, mask_p, byref(err)) < 0:
+                    raise MonaryError(err.message)
 
             # Create a new column for the ids to be returned
             id_data = cmonary.monary_alloc_column_data(1, len(params[0]))
@@ -679,11 +725,13 @@ class Monary(object):
 
             mask = numpy.ones(len(params[0]))
             ids = numpy.ma.masked_array(ids, mask)
-            cmonary.monary_set_column_item(id_data, 0,
+            if cmonary.monary_set_column_item(id_data, 0,
                                            "_id".encode("utf-8"),
                                            cmonary_type, cmonary_type_arg,
                                            ids.data.ctypes.data_as(c_void_p),
-                                           ids.mask.ctypes.data_as(c_void_p))
+                                           ids.mask.ctypes.data_as(c_void_p),
+                                           byref(err)) < 0:
+                raise MonaryError(err.message)
 
             collection = self._get_collection(db, coll)
             if collection is None:
@@ -694,7 +742,8 @@ class Monary(object):
 
             cmonary.monary_insert(collection, coldata, id_data,
                                   self._connection,
-                                  write_concern.get_c_write_concern())
+                                  write_concern.get_c_write_concern(),
+                                  byref(err))
 
             return ids
         finally:

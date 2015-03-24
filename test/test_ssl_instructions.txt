@@ -1,0 +1,58 @@
+ -------------------------------------
+  MANUAL MONARY SSL TEST INSTRUCTIONS
+ -------------------------------------
+
+    In order to run monary with SSL, mongod needs to be compiled with ssl enabled
+        (pass --ssl to scons when compiling mongo) 
+
+    The test permissions files can be found in the "test/certificates" directory
+
+    
+    
+    test_ssl.py
+    ________________________
+
+        This test file tries passing different SSL arguments to Monary with a
+        mongod that is passed a SSL key file. It can be passed either weak
+        certificate validation or not.
+
+        It requires mongod to be run with the following arguments: 
+            mongod --sslOnNormalPorts --sslPEMKeyFile <pem> --sslCAFile=<ca>
+                   --sslWeakCertificateValidation
+
+        For example, with the test/certificates files:
+            mongod --sslOnNormalPorts --sslPEMKeyFile=test/certificates/server.pem  
+                   --sslCAFile=test/certificates/ca.pem --sslWeakCertificateValidation
+
+    Password-Protected PEM Files
+    ____________________________________
+
+        This test file uses password-protected PEM files and requires a
+        different mongod configuration. Pass the path to a password protected
+        PEM file to monary and set the "pem_pwd" argument to the password.
+
+        It requires mongod to be run with the following arguments:
+            mongod --sslMode requireSSL
+                   --sslPEMKeyFile=<password-protected-pem>
+                   --sslPEMKeyPassword "qwerty"
+
+        For example, with the test/certificates files:
+            mongod --sslMode requireSSL
+                   --sslPEMKeyFile=test/certificates/password_protected.pem
+                   --sslPEMKeyPassword "qwerty"
+
+        The Python code to be run:
+            >>> cert_path = os.path.join('test', 'certificates') # set to path
+            >>> pwd_pem = os.path.join(cert_path, 'password_protected.pem')
+            >>> ca_pem = os.path.join(cert_path, 'ca.pem')
+
+            >>> with Monary("mongodb://localhost:27017/?ssl=true",
+                        pem_file=pwd_pem,
+                        pem_pwd='qwerty',
+                        ca_file=ca_pem,
+                        weak_cert_validation=True) as monary:
+                  arrays = monary.query("test", "ssl", {},
+                                      ["x1", "x2", "x3", "x4", "x5"],
+                                      ["float64"] * 5)
+            >>> assert (len(arrays) == 5)
+
