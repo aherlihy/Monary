@@ -93,7 +93,12 @@ void monary_cleanup(void) {
  * @return A pointer to a mongoc_client_t, or NULL if the connection attempt
  * was unsuccessful.
  */
-mongoc_client_t* monary_connect(const char* uri, bson_error_t* err) {
+mongoc_client_t* monary_connect(const char* uri, const char* pem_file,
+                                const char* pem_pwd, const char* ca_file,
+                                const char* ca_dir, const char* crl_file,
+                                bool weak_cert_validation,
+                                bson_error_t* err) {
+    
     mongoc_client_t* client;
     if (!uri) {
         monary_error(err, "empty URI passed to monary_connect");
@@ -107,6 +112,15 @@ mongoc_client_t* monary_connect(const char* uri, bson_error_t* err) {
         return NULL;
     }
     DEBUG("%s", "Connection successful");
+    mongoc_uri_t* mongo_uri = mongoc_uri_new(uri);
+    if( mongoc_uri_get_ssl(mongo_uri) ) {
+        mongoc_ssl_opt_t opts = { pem_file, pem_pwd, ca_file, ca_dir, crl_file,
+                                  weak_cert_validation };
+        mongoc_client_set_ssl_opts(client, &opts);
+        DEBUG("Setting SSL opts={%s, %s, %s, %s, %s, %i} \n",
+              pem_file, pem_pwd, ca_file, ca_dir, crl_file, weak_cert_validation);
+    }
+    mongoc_uri_destroy(mongo_uri);
     return client;
 }
 
@@ -212,6 +226,7 @@ monary_column_data* monary_alloc_column_data(unsigned int num_columns,
     monary_column_data* result;
     monary_column_item* columns;
 
+    if(num_columns > MONARY_MAX_NUM_COLUMNS) { return NULL; }
     result = (monary_column_data*) malloc(sizeof(monary_column_data));
     columns = (monary_column_item*) calloc(num_columns, sizeof(monary_column_item));
 
@@ -228,6 +243,8 @@ int monary_free_column_data(monary_column_data* coldata)
 {
     int i;
     monary_column_item* col;
+
+    if(coldata == NULL || coldata->columns == NULL) { return 0; }
 
     for(i = 0; i < coldata->num_columns; i++) {
         col = coldata->columns + i;
@@ -740,6 +757,9 @@ int64_t monary_query_count(mongoc_collection_t* collection,
                                           NULL,
                                           err);
     bson_destroy(&query_bson);
+    if (total_count < 0) {
+        DEBUG("error: %d.%d %s", err->domain, err->code, err->message);
+    }
 
     return total_count;
 }
@@ -947,6 +967,7 @@ int monary_load_query(monary_cursor* cursor, bson_error_t* err)
     row = 0;                    // Iterator var over the lengths of the arrays
     num_masked = 0;             // The number of failed loads
     
+    // read result values
     while(row < coldata->num_rows
             && !mongoc_cursor_error(mcursor, err)
             && mongoc_cursor_next(mcursor, &bson)) {
@@ -1254,14 +1275,15 @@ int monary_mask_failed_writes(bson_iter_t* errors,
  *                or Null if the '_id' field has been provided.
  * @param client The connection to the database.
  * @param write_concern The write concern to be used for these inserts.
+ * @param err bson_error_t that holds error information in case of failure
  */
 void monary_insert(mongoc_collection_t* collection,
                    monary_column_data* coldata,
                    monary_column_data* id_data,
                    mongoc_client_t* client,
-                   mongoc_write_concern_t* write_concern)
+                   mongoc_write_concern_t* write_concern,
+                   bson_error_t* err)
 {
-    bson_error_t error;
     bson_iter_t bsonit;
     bson_oid_t oid;
     bson_t document;
@@ -1338,11 +1360,11 @@ void monary_insert(mongoc_collection_t* collection,
             }
             DEBUG("Inserting documents %d through %d, total data: %d",
                   num_processed + 1, row + 1, data_len);
-            if (mongoc_bulk_operation_execute(bulk_op, &reply, &error)) {
+            if (mongoc_bulk_operation_execute(bulk_op, &reply, err)) {
                 num_inserted += num_docs;
                 data_len = 0;
             } else {
-                DEBUG("Error message: %s", error.message);
+                DEBUG("Error message: %s", err->message);
 #ifndef NDEBUG
                 str = bson_as_json(&reply, NULL);
                 DEBUG("Server reply: %s", str);
