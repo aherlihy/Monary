@@ -30,7 +30,25 @@ except ImportError:
 import numpy
 import bson
 
+from .write_concern import WriteConcern
+
 cmonary = None
+
+ERROR_LEN = 504
+ERROR_ARR = c_char * ERROR_LEN
+
+
+class bson_error_t(Structure):
+    _fields_ = [
+        ("domain", c_uint),
+        ("code", c_uint),
+        ("message", ERROR_ARR)
+    ]
+
+
+class MonaryError(Exception):
+    pass
+
 
 def _load_cmonary_lib():
     """Loads the cmonary CDLL library (from the directory containing this module)."""
@@ -55,6 +73,7 @@ CTYPE_CODES = {
     "I": c_int,       # int
     "U": c_uint,      # unsigned int
     "L": c_long,      # long
+    "B": c_bool,      # bool
     "0": None,        # None/void
 }
 
@@ -63,18 +82,21 @@ FUNCDEFS = [
     # format: "func_name:arg_types:return_type"
     "monary_init::0",
     "monary_cleanup::0",
-    "monary_connect:S:P",
+    "monary_connect:SP:P",
     "monary_disconnect:P:0",
     "monary_use_collection:PSS:P",
     "monary_destroy_collection:P:0",
     "monary_alloc_column_data:UU:P",
     "monary_free_column_data:P:I",
-    "monary_set_column_item:PUSUUPP:I",
-    "monary_query_count:PP:L",
-    "monary_init_query:PUUPPI:P",
-    "monary_init_aggregate:PPP:P",
-    "monary_load_query:P:I",
+    "monary_set_column_item:PUSUUPPP:I",
+    "monary_query_count:PPP:L",
+    "monary_init_query:PUUPPIP:P",
+    "monary_init_aggregate:PPPP:P",
+    "monary_load_query:PP:I",
     "monary_close_query:P:0",
+    "monary_create_write_concern:IIBBS:P",
+    "monary_destroy_write_concern:P:0",
+    "monary_insert:PPPPPP:0"
 ]
 
 MAX_COLUMNS = 1024
@@ -97,7 +119,7 @@ atexit.register(cmonary.monary_cleanup)
 # Table of type names and conversions between cmonary and numpy types
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id":        (1, "<V12"),
+    "id":        (1, numpy.dtype("<V12")), #TODO: needed?
     "bool":      (2, numpy.bool),
     "int8":      (3, numpy.int8),
     "int16":     (4, numpy.int16),
@@ -141,24 +163,25 @@ def get_monary_numpy_type(orig_typename):
     if ':' in orig_typename:
         vals = orig_typename.split(':', 2)
         if len(vals) > 2:
-            raise ValueError("too many parts in type: %r" % orig_typename)
+            raise ValueError("Too many parts in type: %r" % orig_typename)
         type_name, arg = vals
         try:
             type_arg = int(arg)
         except ValueError:
-            raise ValueError("unable to parse type argument in: %r" % orig_typename)
+            raise ValueError("Unable to parse type argument in: %r"
+                              % orig_typename)
     else:
         type_arg = 0
         type_name = orig_typename
 
     if type_name not in MONARY_TYPES:
-        raise ValueError("unknown typename: %r" % type_name)
+        raise ValueError("Unknown typename: %r" % type_name)
     if type_name in ("string", "binary", "bson"):
         if type_arg == 0:
             raise ValueError("%r must have an explicit typearg with nonzero length "
                              "(use 'string:20', for example)" % type_name)
         type_num, numpy_type_code = MONARY_TYPES[type_name]
-        numpy_type = "%s%i" % (numpy_type_code, type_arg)
+        numpy_type = numpy.dtype("%s%i" % (numpy_type_code, type_arg)) #TODO: needed?
     else:
         type_num, numpy_type = MONARY_TYPES[type_name]
     return type_num, type_arg, numpy_type
@@ -200,6 +223,29 @@ def mvoid_to_bson_id(mvoid):
         return bson.ObjectId(str(mvoid))
 
 
+def validate_insert_fields(fields):
+    """Validate field names for insertion.
+
+       :param fields: a list of field names
+
+       :returns: None
+    """
+    for f in fields:
+        if f.endswith('.'):
+            raise ValueError("invalid fieldname: %r, must not end in '.'" % f)
+        if '$' in f:
+            raise ValueError("invalid fieldname: %r, must not contain '$'" % f)
+
+    if len(fields) != len(set(fields)):
+        raise ValueError("field names must all be unique")
+
+    for f1 in fields:
+        for f2 in fields:
+            if f1 != f2 and f1.startswith(f2) and f1[len(f2)] == '.':
+                raise ValueError("fieldname %r conflicts with nested-document "
+                                 "fieldname %r" % (f2, f1))
+
+
 def get_ordering_dict(obj):
     """Converts a field/direction specification to an OrderedDict, suitable
        for BSON encoding.
@@ -215,7 +261,7 @@ def get_ordering_dict(obj):
     elif isinstance(obj, list):
         return OrderedDict(obj)
     else:
-        raise ValueError("invalid ordering: should be str or list of (column, direction) pairs")
+        raise ValueError("Invalid ordering: should be str or list of (column, direction) pairs")
 
 def get_plain_query(query):
     """Composes a plain query from the given query object.
@@ -243,16 +289,10 @@ def get_full_query(query, sort=None, hint=None):
     if sort or hint:
         query = OrderedDict([("$query", query)])
         if sort:
-            try:
-                query["$orderby"] = get_ordering_dict(sort)
-            except ValueError:
-                raise ValueError("sort arg must be string or list of (field, direction) pairs")
+            query["$orderby"] = get_ordering_dict(sort)
         if hint:
-            try:
-                query["$hint"] = get_ordering_dict(hint)
-            except ValueError:
-                raise ValueError("hint arg must be string or list of (field, direction) pairs")
-    
+            query["$hint"] = get_ordering_dict(hint)
+
     return make_bson(query)
 
 def get_pipeline(pipeline):
@@ -272,9 +312,19 @@ class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
     
     def __init__(self, host="localhost", port=27017, username=None,
-                 password=None, database=None, options={}):
-        """Initialize this connection with the given host and port.
-        
+                 password=None, database=None, pem_file=None,
+                 pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
+                 weak_cert_validation=True, options={}):
+        """
+
+            An example of initializing monary with a port and hostname:
+            >>> m = Monary(localhost, 27017)
+            An example of initializing monary with a URI and SSL parameters:
+            >>> m = Monary("mongodb://localhost:27017/?ssl=true",
+            ...             pem_file='client.pem', ca_file='ca.pem',
+            ...             crl_file='crl.pem')
+
+
            :param host: either host name (or IP) to connect to, or full URI
            :param port: port number of running MongoDB service on host
            :param username: An optional username for authentication.
@@ -283,16 +333,26 @@ class Monary(object):
            specifies a username and password. If this is not specified but
            credentials exist, this defaults to the "admin" database. See
            mongoc_uri(7).
+           :param pem_file: SSL certificate and key file
+           :param pem_pwd: Passphrase for encrypted key file
+           :param ca_file: Certificate authority file
+           :param ca_dir: Directory for certificate authority files
+           :param crl_file: Certificate revocation list file
+           :param weak_cert_validation: bypass validation
            :param options: Connection-specific options as a dict.
         """
 
         self._cmonary = cmonary
         self._connection = None
-        if not self.connect(host, port, username, password, database, options):
-            raise ValueError("Misformatted Mongo URI.")
+        self.connect(host, port, username, password, database,
+                     pem_file, pem_pwd, ca_file, ca_dir, crl_file,
+                     weak_cert_validation, options)
+
 
     def connect(self, host="localhost", port=27017, username=None,
-                password=None, database=None, options={}):
+                password=None, database=None, pem_file=None,
+                pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
+                weak_cert_validation=False, options={}):
         """Connects to the given host and port.
 
            :param host: either host name (or IP) to connect to, or full URI
@@ -303,6 +363,12 @@ class Monary(object):
            specifies a username and password. If this is not specified but
            credentials exist, this defaults to the "admin" database. See
            mongoc_uri(7).
+           :param pem_file: SSL certificate and key file
+           :param pem_pwd: Passphrase for encrypted key file
+           :param ca_file: Certificate authority file
+           :param ca_dir: Directory for certificate authority files
+           :param crl_file: Certificate revocation list file
+           :param weak_cert_validation: bypass validation
            :param options: Connection-specific options as a dict.
 
            :returns: True if successful; false otherwise.
@@ -333,9 +399,27 @@ class Monary(object):
                 uri.append("?%s" % urlencode(options))
             uri = "".join(uri)
 
+        if sys.version >= "3":
+            pem_file = bytes(pem_file, "ascii") if pem_file is not None else None
+            pem_pwd = bytes(pem_pwd, "ascii") if pem_pwd is not None else None
+            ca_file = bytes(ca_file, "ascii") if ca_file is not None else None
+            ca_dir = bytes(ca_dir, "ascii") if ca_dir is not None else None
+            crl_file = bytes(crl_file, "ascii") if crl_file is not None else None
+
         # Attempt the connection
-        self._connection = cmonary.monary_connect(uri.encode('ascii'))
-        return (self._connection is not None)
+        err = bson_error_t(0,0,"")
+        self._connection = cmonary.monary_connect(
+                uri.encode('ascii'),
+                c_char_p(pem_file),
+                c_char_p(pem_pwd),
+                c_char_p(ca_file),
+                c_char_p(ca_dir),
+                c_char_p(crl_file),
+                c_bool(weak_cert_validation),
+                byref(err))
+        if self._connection is None:
+            raise MonaryError(err.message)
+
 
     def _make_column_data(self, fields, types, count):
         """Builds the 'column data' structure used by the underlying cmonary code to
@@ -352,16 +436,20 @@ class Monary(object):
            :rtype: tuple
         """
 
-        if len(fields) != len(types):
-            raise ValueError("number of fields and types do not match")
+        err = bson_error_t(0,0,'')
+
         numcols = len(fields)
+        if numcols != len(types):
+            raise ValueError("Number of fields and types do not match")
         if numcols > MAX_COLUMNS:
-            raise ValueError("number of fields exceeds maximum of %d" % MAX_COLUMNS)
+            raise ValueError("Number of fields exceeds maximum of %d" % MAX_COLUMNS)
         coldata = cmonary.monary_alloc_column_data(numcols, count)
+        if coldata is None:
+            raise MonaryError("Unable to allocate column data")
         colarrays = [ ]
         for i, (field, typename) in enumerate(zip(fields, types)):
             if len(field) > MAX_STRING_LENGTH:
-                raise ValueError("length of field name %s exceeds "
+                raise ValueError("Length of field name %s exceeds "
                                  "maximum of %d" % (field, MAX_COLUMNS))
 
             cmonary_type, cmonary_type_arg, numpy_type = get_monary_numpy_type(typename)
@@ -373,9 +461,10 @@ class Monary(object):
 
             data_p = data.ctypes.data_as(c_void_p)
             mask_p = mask.ctypes.data_as(c_void_p)
-            cmonary.monary_set_column_item(coldata, i, field.encode('ascii'),
+            if cmonary.monary_set_column_item(coldata, i, field.encode('ascii'),
                                            cmonary_type, cmonary_type_arg,
-                                           data_p, mask_p)
+                                           data_p, mask_p, byref(err)) < 0:
+                raise MonaryError(err.message)
 
         return coldata, colarrays
 
@@ -393,7 +482,8 @@ class Monary(object):
                                                  db.encode('ascii'),
                                                  collection.encode('ascii'))
         else:
-            raise ValueError("failed to get collection %s.%s - not connected" % (db, collection))
+            raise MonaryError("Unable to get the collection %s.%s - not connected"
+                              % (db, collection))
 
     def count(self, db, coll, query=None):
         """Count the number of records that will be returned by the given query.
@@ -406,17 +496,18 @@ class Monary(object):
            :rtype: int
         """
         collection = None
+        err = bson_error_t(0,0,'')
         try:
             collection = self._get_collection(db, coll)
             if collection is None:
-                raise ValueError("couldn't connect to collection %s.%s" % (db, coll))
+                raise MonaryError("Unable to get the collection %s.%s" % (db, coll))
             query = make_bson(query)
-            count = cmonary.monary_query_count(collection, query)
+            count = cmonary.monary_query_count(collection, query, byref(err))
         finally:
             if collection is not None:
                 cmonary.monary_destroy_collection(collection)
         if count < 0:
-            raise RuntimeError("Internal error in count()")
+            raise MonaryError(err.message)
         return count
 
     def query(self, db, coll, query, fields, types,
@@ -456,16 +547,21 @@ class Monary(object):
             count = limit
 
         coldata = None
+        err = bson_error_t(0,0,'')
         try:
             coldata, colarrays = self._make_column_data(fields, types, count)
             cursor = None
             try:
                 collection = self._get_collection(db, coll)
                 if collection is None:
-                    raise ValueError("unable to get the collection")
+                    raise MonaryError("Unable to get the collection")
                 cursor = cmonary.monary_init_query(collection, offset, limit,
-                                                   full_query, coldata, select_fields)
-                cmonary.monary_load_query(cursor)
+                                                   full_query, coldata,
+                                                   select_fields, byref(err))
+                if cursor is None:
+                    raise MonaryError(err.message)
+                if cmonary.monary_load_query(cursor, byref(err)) < 0:
+                    raise MonaryError(err.message)
             finally:
                 if cursor is not None:
                     cmonary.monary_close_query(cursor)
@@ -531,11 +627,17 @@ class Monary(object):
             try:
                 collection = self._get_collection(db, coll)
                 if collection is None:
-                    raise ValueError("unable to get the collection")
+                    raise MonaryError("Unable to get the collection")
+                err = bson_error_t(0,0,'')
                 cursor = cmonary.monary_init_query(collection, offset, limit,
-                                                   full_query, coldata, select_fields)
+                                                   full_query, coldata,
+                                                   select_fields, byref(err))
+                if cursor is None:
+                    raise MonaryError(err.message)
                 while True:
-                    num_rows = cmonary.monary_load_query(cursor)
+                    num_rows = cmonary.monary_load_query(cursor, byref(err))
+                    if num_rows < 0:
+                        raise MonaryError(err.message)
                     if num_rows == block_size:
                         yield colarrays
                     elif num_rows > 0:
@@ -551,6 +653,108 @@ class Monary(object):
         finally:
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
+
+    def insert(self, db, coll, params, write_concern=None):
+        """Performs an insertion of data from arrays.
+
+           :param db: name of database
+           :param coll: name of the collection to insert into
+           :param params: list of MonaryParams to be inserted
+           :param write_concern: (optional) a WriteConcern object.
+
+           :returns: A numpy array of the inserted documents ObjectIds. Masked
+                     values indicate documents that failed to be inserted.
+           :rtype: numpy.ma.core.MaskedArray
+
+           .. note:: Params will be sorted by field before insertion. To ensure
+                     that _id is the first filled in all generated documents
+                     and that nested keys are consecutive, all keys will be
+                     sorted alphabetically before the insertions are performed.
+                     The corresponding types and data will be sorted the same
+                     way to maintain the original correspondence.
+        """
+
+        err = bson_error_t(0,0,'')
+
+        if len(params) == 0:
+            raise ValueError("cannot do an empty insert")
+
+        validate_insert_fields(list(map(lambda p: p.field, params)))
+
+        # To ensure that _id is the first key, the string "_id" is mapped
+        # to chr(0). This will put "_id" in front of any other field.
+        params = sorted(
+            params, key=lambda p: p.field if p.field != "_id" else chr(0))
+
+        if params[0].field == "_id" and params[0].array.mask.any():
+            raise ValueError("the _id array must not have any masked values")
+
+        if len(set(len(p) for p in params)) != 1:
+            raise ValueError("all given arrays must be of the same length")
+
+        collection = None
+        id_data = None
+        try:
+            coldata = cmonary.monary_alloc_column_data(len(params),
+                                                       len(params[0]))
+            for i, param in enumerate(params):
+                data_p = param.array.data.ctypes.data_as(c_void_p)
+                mask_p = param.array.mask.ctypes.data_as(c_void_p)
+
+                if cmonary.monary_set_column_item(coldata, i,
+                                               param.field.encode("utf-8"),
+                                               param.cmonary_type,
+                                               param.cmonary_type_arg,
+                                               data_p, mask_p, byref(err)) < 0:
+                    raise MonaryError(err.message)
+
+            # Create a new column for the ids to be returned
+            id_data = cmonary.monary_alloc_column_data(1, len(params[0]))
+
+            if params[0].field == "_id":
+                # If the user specifies "_id", it will be sorted to the front.
+                ids = numpy.copy(params[0].array)
+                cmonary_type = params[0].cmonary_type
+                cmonary_type_arg = params[0].cmonary_type_arg
+                numpy_type = params[0].numpy_type
+            else:
+                # Allocate a single column to return the generated ObjectIds.
+                cmonary_type, cmonary_type_arg, numpy_type = \
+                        get_monary_numpy_type("id")
+                ids = numpy.zeros(len(params[0]), dtype=numpy_type)
+
+            mask = numpy.ones(len(params[0]))
+            ids = numpy.ma.masked_array(ids, mask)
+            if cmonary.monary_set_column_item(id_data, 0,
+                                           "_id".encode("utf-8"),
+                                           cmonary_type, cmonary_type_arg,
+                                           ids.data.ctypes.data_as(c_void_p),
+                                           ids.mask.ctypes.data_as(c_void_p),
+                                           byref(err)) < 0:
+                raise MonaryError(err.message)
+
+            collection = self._get_collection(db, coll)
+            if collection is None:
+                raise ValueError("unable to get the collection")
+
+            if write_concern is None:
+                write_concern = WriteConcern()
+
+            cmonary.monary_insert(collection, coldata, id_data,
+                                  self._connection,
+                                  write_concern.get_c_write_concern(),
+                                  byref(err))
+
+            return ids
+        finally:
+            if write_concern is not None:
+                write_concern.destroy_c_write_concern()
+            if coldata is not None:
+                cmonary.monary_free_column_data(coldata)
+            if id_data is not None:
+                cmonary.monary_free_column_data(id_data)
+            if collection is not None:
+                cmonary.monary_destroy_collection(collection)
 
     def aggregate(self, db, coll, pipeline, fields, types, limit=0,
                   do_count=True):
@@ -585,7 +789,7 @@ class Monary(object):
             result = result.compressed()
             if len(result) == 0:
                 # The count returned was masked
-                raise RuntimeError("Failed to count the aggregation size")
+                raise MonaryError("Failed to count the aggregation size")
             else:
                 count = result[0]
 
@@ -600,11 +804,17 @@ class Monary(object):
             try:
                 collection = self._get_collection(db, coll)
                 if collection is None:
-                    raise ValueError("unable to get the collection")
+                    raise MonaryError("Unable to get the collection")
+                err = bson_error_t(0,0,'')
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
-                                                       coldata)
-                cmonary.monary_load_query(cursor)
+                                                       coldata,
+                                                       byref(err))
+                if cursor is None:
+                    raise MonaryError(err.message)
+
+                if cmonary.monary_load_query(cursor, byref(err)) < 0:
+                    raise MonaryError(err.message)
             finally:
                 if cursor is not None:
                     cmonary.monary_close_query(cursor)
@@ -637,13 +847,20 @@ class Monary(object):
             try:
                 collection = self._get_collection(db, coll)
                 if collection is None:
-                    raise ValueError("unable to get the collection")
+                    raise MonaryError("Unable to get the collection")
+                err = bson_error_t(0,0,'')
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
-                                                       coldata)
+                                                       coldata,
+                                                       byref(err))
+                if cursor is None:
+                    raise MonaryError(err.message)
 
+                err = bson_error_t(0,0,'')
                 while True:
-                    num_rows = cmonary.monary_load_query(cursor)
+                    num_rows = cmonary.monary_load_query(cursor, byref(err))
+                    if num_rows < 0:
+                        raise MonaryError(err.message)
                     if num_rows == block_size:
                         yield colarrays
                     elif num_rows > 0:
