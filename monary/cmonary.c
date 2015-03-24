@@ -758,7 +758,7 @@ int64_t monary_query_count(mongoc_collection_t* collection,
                                           err);
     bson_destroy(&query_bson);
     if (total_count < 0) {
-        DEBUG("error: %d.%d %s", error.domain, error.code, error.message);
+        DEBUG("error: %d.%d %s", err->domain, err->code, err->message);
     }
 
     return total_count;
@@ -1364,7 +1364,7 @@ void monary_insert(mongoc_collection_t* collection,
                 num_inserted += num_docs;
                 data_len = 0;
             } else {
-                DEBUG("Error message: %s", error.message);
+                DEBUG("Error message: %s", err->message);
 #ifndef NDEBUG
                 str = bson_as_json(&reply, NULL);
                 DEBUG("Server reply: %s", str);
