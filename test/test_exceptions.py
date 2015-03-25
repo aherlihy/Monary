@@ -1,6 +1,5 @@
-from bson import InvalidDocument
-from pymongo.errors import ConnectionFailure, OperationFailure
-from nose import SkipTest
+import bson
+import nose
 import pymongo
 
 import monary
@@ -10,8 +9,9 @@ import test_helpers
 try:
     with pymongo.MongoClient() as cx:
         cx.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as ex:
-    raise SkipTest("Unable to connect to mongod: ", str(ex))
+except (pymongo.errors.ConnectionFailure,
+        pymongo.errors.OperationFailure) as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 def test_get_monary_numpy_type1():
@@ -165,7 +165,7 @@ def test_monary_count3():
 def test_monary_query_bson():
     # Test should fail in monary_init_query.
     with test_helpers.assertraises(
-            InvalidDocument,
+            bson.InvalidDocument,
             "documents must have only string keys, key was 0"):
         with monary.Monary() as m:
             m.query("test", "collection", {0: 0},

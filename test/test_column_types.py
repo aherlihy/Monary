@@ -1,19 +1,17 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import random
 import datetime
+import random
 import struct
 import sys
 
 import bson
+import nose
 import numpy
 import pymongo
-from pymongo.errors import ConnectionFailure, OperationFailure
-from nose import SkipTest
 
 import monary
-from monary.monary import OrderedDict, mvoid_to_bson_id
 
 PY3 = sys.version_info[0] >= 3
 
@@ -22,8 +20,9 @@ NUM_TEST_RECORDS = 100
 try:
     with pymongo.MongoClient() as cx:
         cx.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as ex:
-    raise SkipTest("Unable to connect to mongod: ", str(ex))
+except (pymongo.errors.ConnectionFailure,
+        pymongo.errors.OperationFailure) as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 def get_pymongo_connection():
@@ -133,7 +132,7 @@ def test_float_columns():
 
 def test_id_column():
     column = get_monary_column("_id", "id")
-    data = list(map(mvoid_to_bson_id, column))
+    data = list(map(monary.monary.mvoid_to_bson_id, column))
     expected = get_record_values("_id")
     assert data == expected
 
@@ -183,7 +182,8 @@ def test_nested_field():
 
 
 def list_to_bsonable_dict(values):
-    return OrderedDict((str(i), val) for i, val in enumerate(values))
+    return monary.monary.OrderedDict((str(i), val)
+                                     for i, val in enumerate(values))
 
 
 def test_bson_column():

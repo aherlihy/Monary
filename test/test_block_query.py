@@ -1,17 +1,17 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import nose
 import pymongo
-from pymongo.errors import ConnectionFailure, OperationFailure
-from nose import SkipTest
 
 import monary
 
 try:
     with pymongo.MongoClient() as cx:
         cx.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as ex:
-    raise SkipTest("Unable to connect to mongod: ", str(ex))
+except (pymongo.errors.ConnectionFailure,
+        pymongo.errors.OperationFailure) as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 NUM_TEST_RECORDS = 5000
 BLOCK_SIZE = 32 * 50

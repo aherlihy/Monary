@@ -2,11 +2,11 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import atexit
+import copy
+import ctypes
 import os.path
 import platform
 import sys
-from copy import deepcopy
-import ctypes
 
 PY3 = sys.version_info[0] >= 3
 if PY3:
@@ -846,7 +846,7 @@ class Monary(object):
         else:
             # Use the aggregation pipeline to count the result size.
             count_stage = {"$group": {"_id": 1, "count": {"$sum": 1}}}
-            pipe_copy = deepcopy(pipeline)
+            pipe_copy = copy.deepcopy(pipeline)
             pipe_copy["pipeline"].append(count_stage)
 
             # Extract the count.

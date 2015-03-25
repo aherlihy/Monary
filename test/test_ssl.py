@@ -1,6 +1,6 @@
 import os
 
-from nose import SkipTest
+import nose
 import pymongo
 
 import monary
@@ -32,7 +32,7 @@ def inittest_ssl():
         collection.insert({'x1': 0.0})
     except pymongo.errors.ConnectionFailure as e:
         if "SSL handshake failed" in str(e):
-            raise SkipTest("Can't connect to mongod with SSL", str(e))
+            raise nose.SkipTest("Can't connect to mongod with SSL", str(e))
         else:
             raise Exception("Unable to connect to mongod: ", str(e))
     return cert_path, client_pem, ca_pem
@@ -43,7 +43,7 @@ def inittest_no_ssl():
     try:
         client = pymongo.MongoClient("mongodb://localhost:27017")
     except pymongo.errors.ConnectionFailure as e:
-        raise SkipTest("Non-SSL connection failed", str(e))
+        raise nose.SkipTest("Non-SSL connection failed", str(e))
     else:
         collection = client.test.ssl
         collection.drop()

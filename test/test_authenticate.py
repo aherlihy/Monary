@@ -1,18 +1,18 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import nose
 import pymongo
-from nose import SkipTest
 
 import monary
-from test_helpers import assertraises
+import test_helpers
 
 db = None
 
 try:
     pymongo.MongoClient()
 except pymongo.errors.ConnectionFailure as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    raise nose.SkipTest("Unable to connect to mongod: ", str(e))
 
 
 def setup():
@@ -23,8 +23,8 @@ def setup():
     db.authenticate("monary_test_user", "monary_test_pass")
     cmd_opts = db.command('getCmdLineOpts')['argv']
     if "--auth" not in cmd_opts:
-        raise SkipTest("The mongo server (mongod) needs to be "
-                       "running with authentication (--auth)")
+        raise nose.SkipTest("The mongo server (mongod) needs to be "
+                            "running with authentication (--auth)")
     db.junk.insert({"route": 66})
 
 
@@ -52,8 +52,8 @@ def test_with_authenticate_from_uri():
 
 
 def test_bad_authenticate():
-    with assertraises(monary.monary.MonaryError,
-                      "Failed to authenticate credentials"):
+    with test_helpers.assertraises(monary.monary.MonaryError,
+                                   "Failed to authenticate credentials"):
         with monary.Monary(host="127.0.0.1",
                            database="admin",
                            username="monary_test_user",
@@ -66,8 +66,8 @@ def test_reconnection():
                        database="admin",
                        username="monary_test_user",
                        password="monary_test_wrong_pass") as m:
-        with assertraises(monary.monary.MonaryError,
-                          "Failed to authenticate credentials"):
+        with test_helpers.assertraises(monary.monary.MonaryError,
+                                       "Failed to authenticate credentials"):
             m.count("admin", "junk", {})
 
         m.connect(host="127.0.0.1",
