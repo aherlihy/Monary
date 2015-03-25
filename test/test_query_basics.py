@@ -31,7 +31,7 @@ def setup():
         db = c.monary_test
         coll = db.test_data
         records = []
-        for i in xrange(NUM_TEST_RECORDS):
+        for i in range(NUM_TEST_RECORDS):
             r = {"_id": i}
             if (i % 2) == 0:
                 r['x'] = 3

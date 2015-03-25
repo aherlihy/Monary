@@ -46,6 +46,10 @@ class bson_error_t(ctypes.Structure):
     ]
 
 
+def get_empty_bson_error():
+    return bson_error_t(0, 0, "".encode("utf-8"))
+
+
 class MonaryError(Exception):
     pass
 
@@ -422,7 +426,7 @@ class Monary(object):
             c_file = bytes(c_file, "ascii") if c_file is not None else None
 
         # Attempt the connection.
-        err = bson_error_t(0, 0, "")
+        err = get_empty_bson_error()
         self._connection = cmonary.monary_connect(
             uri.encode('ascii'),
             ctypes.c_char_p(p_file),
@@ -452,7 +456,7 @@ class Monary(object):
          :rtype: tuple
         """
 
-        err = bson_error_t(0, 0, '')
+        err = get_empty_bson_error()
 
         numcols = len(fields)
         if numcols != len(types):
@@ -519,7 +523,7 @@ class Monary(object):
            :rtype: int
         """
         collection = None
-        err = bson_error_t(0, 0, '')
+        err = get_empty_bson_error()
         try:
             collection = self._get_collection(db, coll)
             if collection is None:
@@ -579,7 +583,7 @@ class Monary(object):
 
         coldata = None
         collection = None
-        err = bson_error_t(0, 0, '')
+        err = get_empty_bson_error()
         try:
             coldata, colarrays = self._make_column_data(fields, types, count)
             cursor = None
@@ -675,7 +679,7 @@ class Monary(object):
                 collection = self._get_collection(db, coll)
                 if collection is None:
                     raise MonaryError("Unable to get the collection")
-                err = bson_error_t(0, 0, '')
+                err = get_empty_bson_error()
                 cursor = cmonary.monary_init_query(
                     collection,
                     offset,
@@ -727,7 +731,7 @@ class Monary(object):
                      way to maintain the original correspondence.
         """
 
-        err = bson_error_t(0, 0, '')
+        err = get_empty_bson_error()
 
         if len(params) == 0:
             raise ValueError("cannot do an empty insert")
@@ -868,7 +872,7 @@ class Monary(object):
                 collection = self._get_collection(db, coll)
                 if collection is None:
                     raise MonaryError("Unable to get the collection")
-                err = bson_error_t(0, 0, '')
+                err = get_empty_bson_error()
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
                                                        coldata,
@@ -912,7 +916,7 @@ class Monary(object):
                 collection = self._get_collection(db, coll)
                 if collection is None:
                     raise MonaryError("Unable to get the collection")
-                err = bson_error_t(0, 0, '')
+                err = get_empty_bson_error()
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
                                                        coldata,
@@ -920,7 +924,7 @@ class Monary(object):
                 if cursor is None:
                     raise MonaryError(err.message)
 
-                err = bson_error_t(0, 0, '')
+                err = get_empty_bson_error()
                 while True:
                     num_rows = cmonary.monary_load_query(cursor,
                                                          ctypes.byref(err))

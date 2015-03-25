@@ -204,7 +204,7 @@ def test_insert_and_retrieve():
     arrays = TYPE_INFERABLE_ARRAYS + NON_TYPE_INFERABLE_ARRAYS + [seq]
     types = (TYPE_INFERABLE_ARRAYS_TYPES +
              NON_TYPE_INFERABLE_ARRAYS_TYPES +
-            [seq_type])
+             [seq_type])
     params = MonaryParam.from_lists(
         arrays, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10",
                  "x11", "x12", "x13", "x14", "x15", "sequence"], types)
