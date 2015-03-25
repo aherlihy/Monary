@@ -13,9 +13,18 @@ import bson
 import numpy as np
 from numpy import ma
 import pymongo
+from pymongo.errors import ConnectionFailure, OperationFailure
+from nose import SkipTest
 
 from monary import Monary, mvoid_to_bson_id, MonaryParam
 from monary.monary import validate_insert_fields
+
+
+try:
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 PY3 = sys.version_info[0] >= 3
 
