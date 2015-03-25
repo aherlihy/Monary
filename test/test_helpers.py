@@ -1,5 +1,6 @@
 import contextlib
 
+
 @contextlib.contextmanager
 def assertraises(error_class, message):
     try:

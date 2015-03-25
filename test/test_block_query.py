@@ -29,7 +29,8 @@ def get_monary_connection():
 def setup():
     global records
     with get_pymongo_connection() as c:
-        c.drop_database("monary_test")  # ensure that database does not exist
+        # Ensure that database does not exist.
+        c.drop_database("monary_test")
         coll = c.monary_test.test_data
         for i in range(NUM_TEST_RECORDS):
             r = {"_id": i}

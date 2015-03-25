@@ -62,7 +62,7 @@ bin_arr = None
 
 # This is used for sorting results during queries to ensure the returned values
 # are in the same order as the values inserted.
-seq = ma.masked_array(np.arange(NUM_TEST_RECORDS, dtype="int64"),
+seq = ma.masked_array(np.arange(NUM_TEST_RECORDS, dtype=np.int64),
                       np.zeros(NUM_TEST_RECORDS))
 seq_type = "int64"
 
@@ -88,11 +88,11 @@ def random_timestamp():
 
 
 def random_date():
-    t = datetime.datetime(1970, 1, 1) + \
-        (1 - 2 * random.randint(0, 1)) * \
-        datetime.timedelta(days=random.randint(0, 60 * 365),
-                           seconds=random.randint(0, 24 * 3600),
-                           milliseconds=random.randint(0, 1000))
+    t = (datetime.datetime(1970, 1, 1) +
+         (1 - 2 * random.randint(0, 1)) *
+         datetime.timedelta(days=random.randint(0, 60 * 365),
+                            seconds=random.randint(0, 24 * 3600),
+                            milliseconds=random.randint(0, 1000)))
     return time.mktime(t.timetuple())
 
 
@@ -202,8 +202,9 @@ def test_insert_and_retrieve_no_types():
 
 def test_insert_and_retrieve():
     arrays = TYPE_INFERABLE_ARRAYS + NON_TYPE_INFERABLE_ARRAYS + [seq]
-    types = TYPE_INFERABLE_ARRAYS_TYPES + NON_TYPE_INFERABLE_ARRAYS_TYPES \
-        + [seq_type]
+    types = (TYPE_INFERABLE_ARRAYS_TYPES +
+             NON_TYPE_INFERABLE_ARRAYS_TYPES +
+            [seq_type])
     params = MonaryParam.from_lists(
         arrays, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10",
                  "x11", "x12", "x13", "x14", "x15", "sequence"], types)
@@ -250,7 +251,7 @@ def test_oid():
                 [ids, seq2], ["oid", "sequence"], ["id", "int64"]))
         assert len(ids2) == ids.count() == NUM_TEST_RECORDS
         # Get back the ids from the original insert (_id) and the ids that
-        # were manually inserted (oid)
+        # were manually inserted (oid).
         retrieved = m.query("monary_test", "data", {},
                             ["_id", "oid"], ["id", "id"], sort="sequence")
         # These should be equal to ``ids`` from the top of this test.
@@ -298,7 +299,7 @@ def test_nested_insert():
                               dtype="float64")
     rand = np.random.uniform(0, 5, NUM_TEST_RECORDS)
     rand = ma.masked_array(rand, np.zeros(NUM_TEST_RECORDS),
-                             dtype="float64")
+                           dtype="float64")
     unmasked = ma.masked_array(rand_bools(), np.zeros(NUM_TEST_RECORDS),
                                dtype="bool")
     masked = ma.masked_array(rand_bools(), np.ones(NUM_TEST_RECORDS),
@@ -380,7 +381,7 @@ def test_insert_bson():
 
 
 def test_custom_id():
-    f_unmasked = ma.masked_array(np.arange(NUM_TEST_RECORDS, dtype="float64"),
+    f_unmasked = ma.masked_array(np.arange(NUM_TEST_RECORDS, dtype=np.float64),
                                  np.zeros(NUM_TEST_RECORDS))
     # To avoid collision with seq.
     f_unmasked += 0.5
@@ -423,13 +424,13 @@ def test_insert_errors():
 
         # ``threes`` is a list of numbers counting up by 3, i.e. 0 3 6 9 ...
         num_threes = int(NUM_TEST_RECORDS / 3) + 1
-        threes = np.arange(num_threes, dtype="int64")
+        threes = np.arange(num_threes, dtype=np.int64)
         threes *= 3
         threes = ma.masked_array(threes, np.zeros(num_threes))
         m.insert("monary_test", "data", [MonaryParam(threes, "_id")])
 
         nums = ma.masked_array(
-            np.arange(NUM_TEST_RECORDS, dtype="int64"),
+            np.arange(NUM_TEST_RECORDS, dtype=np.int64),
             np.zeros(NUM_TEST_RECORDS))
         ids = m.insert("monary_test", "data", [MonaryParam(nums, "_id")])
 

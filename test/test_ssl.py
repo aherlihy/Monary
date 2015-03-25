@@ -6,10 +6,9 @@ import pymongo
 import monary
 import test_helpers
 
-"""
-Test file for SSL functionality of monary.
+"""Test file for SSL functionality of monary.
 
-See test_ssl_instructions.txt
+See test_ssl_instructions.txt.
 
 """
 
