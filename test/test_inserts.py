@@ -13,9 +13,17 @@ import bson
 import numpy as np
 from numpy import ma
 import pymongo
+from pymongo.errors import ConnectionFailure, OperationFailure
+from nose import SkipTest
 
 from monary import Monary, mvoid_to_bson_id, MonaryParam
 from monary.monary import validate_insert_fields
+
+try:
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 PY3 = sys.version_info[0] >= 3
 
@@ -208,7 +216,7 @@ def test_insert_and_retrieve():
                              "sequence"], types, sort="sequence")
         for data, expected in zip(retrieved, arrays):
             assert data.count() == expected.count()
-            if("V" in str(data.dtype)):
+            if "V" in str(data.dtype):
                 # Need to convert binary data.
                 fun = str
                 if PY3:
@@ -288,8 +296,8 @@ def test_nested_insert():
     squares = np.arange(NUM_TEST_RECORDS) ** 2
     squares = ma.masked_array(squares, np.zeros(NUM_TEST_RECORDS),
                               dtype="float64")
-    random = np.random.uniform(0, 5, NUM_TEST_RECORDS)
-    random = ma.masked_array(random, np.zeros(NUM_TEST_RECORDS),
+    rand = np.random.uniform(0, 5, NUM_TEST_RECORDS)
+    rand = ma.masked_array(rand, np.zeros(NUM_TEST_RECORDS),
                              dtype="float64")
     unmasked = ma.masked_array(rand_bools(), np.zeros(NUM_TEST_RECORDS),
                                dtype="bool")
@@ -299,14 +307,14 @@ def test_nested_insert():
         m.insert(
             "monary_test", "data",
             MonaryParam.from_lists(
-                [squares, random, seq, unmasked, masked],
+                [squares, rand, seq, unmasked, masked],
                 ["data.sqr", "data.rand", "sequence", "x.y.real", "x.y.fake"]))
     with pymongo.MongoClient() as c:
         col = c.monary_test.data
         for i, doc in enumerate(col.find().sort(
                 [("sequence", pymongo.ASCENDING)])):
             assert doc["sequence"] == i
-            assert random[i] == doc["data"]["rand"]
+            assert rand[i] == doc["data"]["rand"]
             assert squares[i] == doc["data"]["sqr"]
             assert "fake" not in doc["x"]["y"]
             assert unmasked[i] == doc["x"]["y"]["real"]

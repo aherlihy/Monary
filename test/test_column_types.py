@@ -16,16 +16,14 @@ import monary
 from monary.monary import OrderedDict, mvoid_to_bson_id
 
 PY3 = sys.version_info[0] >= 3
-if PY3:
-    xrange = range
 
 NUM_TEST_RECORDS = 100
 
 try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 def get_pymongo_connection():
@@ -46,14 +44,14 @@ def setup():
 
     random.seed(1234) # for reproducibility
 
-    for i in xrange(NUM_TEST_RECORDS):
+    for i in range(NUM_TEST_RECORDS):
         if PY3:
             # Python 3
-            binary = "".join(chr(random.randint(0, 255)) for i in xrange(5))
+            binary = "".join(chr(random.randint(0, 255)) for i in range(5))
             binary = binary.encode('utf-8')
         else:
             # Python 2.6 / 2.7
-            binary = "".join(chr(random.randint(0, 255)) for i in xrange(5))
+            binary = "".join(chr(random.randint(0, 255)) for i in range(5))
         record = dict(
                     sequence=i,
                     intval=random.randint(-128, 127),
@@ -224,7 +222,7 @@ def test_string_size_column():
 def test_list_size_column():
     lists = get_record_values("intlistval")
     data = get_monary_column("intlistval", "size")
-    expected = [ len(bson.BSON.encode(list_to_bsonable_dict(list))) for list in lists ]
+    expected = [ len(bson.BSON.encode(list_to_bsonable_dict(l))) for l in lists ]
     assert data == expected
 
 def test_bson_size_column():

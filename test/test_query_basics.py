@@ -7,18 +7,13 @@ from nose import SkipTest
 
 import monary
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 NUM_TEST_RECORDS = 5000
 
 try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 def get_pymongo_connection():
@@ -75,4 +70,4 @@ def test_sum():
 
 def test_sort():
     vals = get_monary_column("_id", "int32")
-    assert (vals == list(xrange(NUM_TEST_RECORDS))).all()
+    assert (vals == list(range(NUM_TEST_RECORDS))).all()

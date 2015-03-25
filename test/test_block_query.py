@@ -8,15 +8,10 @@ from nose import SkipTest
 import monary
 
 try:
-    xrange
-except NameError:
-    xrange = range
-
-try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 NUM_TEST_RECORDS = 5000
 BLOCK_SIZE = 32 * 50
@@ -36,7 +31,7 @@ def setup():
     with get_pymongo_connection() as c:
         c.drop_database("monary_test")  # ensure that database does not exist
         coll = c.monary_test.test_data
-        for i in xrange(NUM_TEST_RECORDS):
+        for i in range(NUM_TEST_RECORDS):
             r = {"_id": i}
             if (i % 2) == 0:
                 r["x"] = 3

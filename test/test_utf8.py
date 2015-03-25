@@ -11,10 +11,10 @@ from nose import SkipTest
 import monary
 
 try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except (ConnectionFailure, OperationFailure) as ex:
+    raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]

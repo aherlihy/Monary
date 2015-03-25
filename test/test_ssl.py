@@ -52,8 +52,8 @@ def inittest_no_ssl():
     return cert_path, client_pem, ca_pem
 
 
-def query_with(monary):
-    arrays = monary.query("test", "ssl", {}, ["x1"], ["float64"])
+def query_with(m):
+    arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
     assert len(arrays) == 1 and arrays[0] == 0.0
 
 

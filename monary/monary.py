@@ -6,7 +6,7 @@ import os.path
 import platform
 import sys
 from copy import deepcopy
-from ctypes import *
+import ctypes
 
 PY3 = sys.version_info[0] >= 3
 if PY3:
@@ -35,13 +35,13 @@ from .write_concern import WriteConcern
 cmonary = None
 
 ERROR_LEN = 504
-ERROR_ARR = c_char * ERROR_LEN
+ERROR_ARR = ctypes.c_char * ERROR_LEN
 
 
-class bson_error_t(Structure):
+class bson_error_t(ctypes.Structure):
     _fields_ = [
-        ("domain", c_uint),
-        ("code", c_uint),
+        ("domain", ctypes.c_uint),
+        ("code", ctypes.c_uint),
         ("message", ERROR_ARR)
     ]
 
@@ -57,23 +57,23 @@ def _load_cmonary_lib():
     abspath = os.path.abspath(thismodule)
     moduledir = list(os.path.split(abspath))[:-1]
     if platform.system() == 'Windows':
-        libbson = CDLL(os.path.join(*(moduledir + ['libbson-1.0.dll'])))
-        libcmongo = CDLL(os.path.join(*(moduledir + ['libmongoc-1.0.dll'])))
+        ctypes.CDLL(os.path.join(*(moduledir + ['libbson-1.0.dll'])))
+        ctypes.CDLL(os.path.join(*(moduledir + ['libmongoc-1.0.dll'])))
         cmonary_fname = "libcmonary.dll"
     else:
         cmonary_fname = "libcmonary.so"
     cmonaryfile = os.path.join(*(moduledir + [cmonary_fname]))
-    cmonary = CDLL(cmonaryfile)
+    cmonary = ctypes.CDLL(cmonaryfile)
 
 _load_cmonary_lib()
 
 CTYPE_CODES = {
-    "P": c_void_p,    # pointer
-    "S": c_char_p,    # string
-    "I": c_int,       # int
-    "U": c_uint,      # unsigned int
-    "L": c_long,      # long
-    "B": c_bool,      # bool
+    "P": ctypes.c_void_p,    # pointer
+    "S": ctypes.c_char_p,    # string
+    "I": ctypes.c_int,       # int
+    "U": ctypes.c_uint,      # unsigned int
+    "L": ctypes.c_long,      # long
+    "B": ctypes.c_bool,      # bool
     "0": None,        # None/void
 }
 
@@ -213,7 +213,7 @@ def mvoid_to_bson_id(mvoid):
     if PY3:
         # Python 3
         string = str(mvoid)
-        string_list = ''.join(filter(lambda x: x not in '[]', string)).split()
+        string_list = ''.join(filter(lambda y: y not in '[]', string)).split()
         ints = map(int, string_list)
         uints = [x & 0xff for x in ints]
         id_bytes = bytes(uints)
@@ -314,11 +314,11 @@ class Monary(object):
     def __init__(self, host="localhost", port=27017, username=None,
                  password=None, database=None, pem_file=None,
                  pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
-                 weak_cert_validation=True, options={}):
+                 weak_cert_validation=True, options=None):
         """
 
             An example of initializing monary with a port and hostname:
-            >>> m = Monary(localhost, 27017)
+            >>> m = Monary("localhost", 27017)
             An example of initializing monary with a URI and SSL parameters:
             >>> m = Monary("mongodb://localhost:27017/?ssl=true",
             ...             pem_file='client.pem', ca_file='ca.pem',
@@ -352,7 +352,7 @@ class Monary(object):
     def connect(self, host="localhost", port=27017, username=None,
                 password=None, database=None, pem_file=None,
                 pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
-                weak_cert_validation=False, options={}):
+                weak_cert_validation=False, options=None):
         """Connects to the given host and port.
 
            :param host: either host name (or IP) to connect to, or full URI
@@ -374,7 +374,6 @@ class Monary(object):
            :returns: True if successful; false otherwise.
            :rtype: bool
         """
-
         if self._connection is not None:
             self.close()
 
@@ -395,7 +394,7 @@ class Monary(object):
 
             if database is not None:
                 uri.append("/%s" % database)
-            if len(options) > 0:
+            if options is not None:
                 uri.append("?%s" % urlencode(options))
             uri = "".join(uri)
 
@@ -410,13 +409,13 @@ class Monary(object):
         err = bson_error_t(0,0,"")
         self._connection = cmonary.monary_connect(
                 uri.encode('ascii'),
-                c_char_p(pem_file),
-                c_char_p(pem_pwd),
-                c_char_p(ca_file),
-                c_char_p(ca_dir),
-                c_char_p(crl_file),
-                c_bool(weak_cert_validation),
-                byref(err))
+                ctypes.c_char_p(pem_file),
+                ctypes.c_char_p(pem_pwd),
+                ctypes.c_char_p(ca_file),
+                ctypes.c_char_p(ca_dir),
+                ctypes.c_char_p(crl_file),
+                ctypes.c_bool(weak_cert_validation),
+                ctypes.byref(err))
         if self._connection is None:
             raise MonaryError(err.message)
 
@@ -459,11 +458,11 @@ class Monary(object):
             storage = numpy.ma.masked_array(data, mask)
             colarrays.append(storage)
 
-            data_p = data.ctypes.data_as(c_void_p)
-            mask_p = mask.ctypes.data_as(c_void_p)
+            data_p = data.ctypes.data_as(ctypes.c_void_p)
+            mask_p = mask.ctypes.data_as(ctypes.c_void_p)
             if cmonary.monary_set_column_item(coldata, i, field.encode('ascii'),
                                            cmonary_type, cmonary_type_arg,
-                                           data_p, mask_p, byref(err)) < 0:
+                                           data_p, mask_p, ctypes.byref(err)) < 0:
                 raise MonaryError(err.message)
 
         return coldata, colarrays
@@ -502,7 +501,7 @@ class Monary(object):
             if collection is None:
                 raise MonaryError("Unable to get the collection %s.%s" % (db, coll))
             query = make_bson(query)
-            count = cmonary.monary_query_count(collection, query, byref(err))
+            count = cmonary.monary_query_count(collection, query, ctypes.byref(err))
         finally:
             if collection is not None:
                 cmonary.monary_destroy_collection(collection)
@@ -547,6 +546,7 @@ class Monary(object):
             count = limit
 
         coldata = None
+        collection = None
         err = bson_error_t(0,0,'')
         try:
             coldata, colarrays = self._make_column_data(fields, types, count)
@@ -557,10 +557,10 @@ class Monary(object):
                     raise MonaryError("Unable to get the collection")
                 cursor = cmonary.monary_init_query(collection, offset, limit,
                                                    full_query, coldata,
-                                                   select_fields, byref(err))
+                                                   select_fields, ctypes.byref(err))
                 if cursor is None:
                     raise MonaryError(err.message)
-                if cmonary.monary_load_query(cursor, byref(err)) < 0:
+                if cmonary.monary_load_query(cursor, ctypes.byref(err)) < 0:
                     raise MonaryError(err.message)
             finally:
                 if cursor is not None:
@@ -621,6 +621,7 @@ class Monary(object):
         full_query = get_full_query(query, sort, hint)
 
         coldata = None
+        collection = None
         try:
             coldata, colarrays = self._make_column_data(fields, types, block_size)
             cursor = None
@@ -631,11 +632,11 @@ class Monary(object):
                 err = bson_error_t(0,0,'')
                 cursor = cmonary.monary_init_query(collection, offset, limit,
                                                    full_query, coldata,
-                                                   select_fields, byref(err))
+                                                   select_fields, ctypes.byref(err))
                 if cursor is None:
                     raise MonaryError(err.message)
                 while True:
-                    num_rows = cmonary.monary_load_query(cursor, byref(err))
+                    num_rows = cmonary.monary_load_query(cursor, ctypes.byref(err))
                     if num_rows < 0:
                         raise MonaryError(err.message)
                     if num_rows == block_size:
@@ -693,19 +694,20 @@ class Monary(object):
             raise ValueError("all given arrays must be of the same length")
 
         collection = None
+        coldata = None
         id_data = None
         try:
             coldata = cmonary.monary_alloc_column_data(len(params),
                                                        len(params[0]))
             for i, param in enumerate(params):
-                data_p = param.array.data.ctypes.data_as(c_void_p)
-                mask_p = param.array.mask.ctypes.data_as(c_void_p)
+                data_p = param.array.data.ctypes.data_as(ctypes.c_void_p)
+                mask_p = param.array.mask.ctypes.data_as(ctypes.c_void_p)
 
                 if cmonary.monary_set_column_item(coldata, i,
                                                param.field.encode("utf-8"),
                                                param.cmonary_type,
                                                param.cmonary_type_arg,
-                                               data_p, mask_p, byref(err)) < 0:
+                                               data_p, mask_p, ctypes.byref(err)) < 0:
                     raise MonaryError(err.message)
 
             # Create a new column for the ids to be returned
@@ -716,7 +718,6 @@ class Monary(object):
                 ids = numpy.copy(params[0].array)
                 cmonary_type = params[0].cmonary_type
                 cmonary_type_arg = params[0].cmonary_type_arg
-                numpy_type = params[0].numpy_type
             else:
                 # Allocate a single column to return the generated ObjectIds.
                 cmonary_type, cmonary_type_arg, numpy_type = \
@@ -728,9 +729,9 @@ class Monary(object):
             if cmonary.monary_set_column_item(id_data, 0,
                                            "_id".encode("utf-8"),
                                            cmonary_type, cmonary_type_arg,
-                                           ids.data.ctypes.data_as(c_void_p),
-                                           ids.mask.ctypes.data_as(c_void_p),
-                                           byref(err)) < 0:
+                                           ids.data.ctypes.data_as(ctypes.c_void_p),
+                                           ids.mask.ctypes.data_as(ctypes.c_void_p),
+                                           ctypes.byref(err)) < 0:
                 raise MonaryError(err.message)
 
             collection = self._get_collection(db, coll)
@@ -743,7 +744,7 @@ class Monary(object):
             cmonary.monary_insert(collection, coldata, id_data,
                                   self._connection,
                                   write_concern.get_c_write_concern(),
-                                  byref(err))
+                                  ctypes.byref(err))
 
             return ids
         finally:
@@ -798,6 +799,7 @@ class Monary(object):
 
         encoded_pipeline = get_plain_query(pipeline)
         coldata = None
+        collection = None
         try:
             coldata, colarrays = self._make_column_data(fields, types, count)
             cursor = None
@@ -809,11 +811,11 @@ class Monary(object):
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
                                                        coldata,
-                                                       byref(err))
+                                                       ctypes.byref(err))
                 if cursor is None:
                     raise MonaryError(err.message)
 
-                if cmonary.monary_load_query(cursor, byref(err)) < 0:
+                if cmonary.monary_load_query(cursor, ctypes.byref(err)) < 0:
                     raise MonaryError(err.message)
             finally:
                 if cursor is not None:
@@ -839,6 +841,7 @@ class Monary(object):
         encoded_pipeline = get_plain_query(pipeline)
 
         coldata = None
+        collection = None
         try:
             coldata, colarrays = self._make_column_data(fields,
                                                         types,
@@ -852,13 +855,13 @@ class Monary(object):
                 cursor = cmonary.monary_init_aggregate(collection,
                                                        encoded_pipeline,
                                                        coldata,
-                                                       byref(err))
+                                                       ctypes.byref(err))
                 if cursor is None:
                     raise MonaryError(err.message)
 
                 err = bson_error_t(0,0,'')
                 while True:
-                    num_rows = cmonary.monary_load_query(cursor, byref(err))
+                    num_rows = cmonary.monary_load_query(cursor, ctypes.byref(err))
                     if num_rows < 0:
                         raise MonaryError(err.message)
                     if num_rows == block_size:
@@ -886,7 +889,7 @@ class Monary(object):
     def __enter__(self):
         """Monary connections meet the ContextManager protocol."""
         return self
-        
+
     def __exit__(self, *args):
         """Monary connections meet the ContextManager protocol."""
         self.close()
