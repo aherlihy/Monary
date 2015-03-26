@@ -3,6 +3,8 @@
 
 import datetime
 
+from test import unittest
+
 from monary.datehelper import datetime_to_mongodate, mongodate_to_datetime
 
 DT = datetime.datetime
@@ -14,11 +16,11 @@ DATES = [
 ]
 
 
-def test_datetime_to_mongo():
-    for dt, mongo in DATES:
-        assert datetime_to_mongodate(dt) == mongo
+class TestDateHelper(unittest.TestCase):
+    def test_datetime_to_mongo(self):
+        for dt, mongo in DATES:
+            assert datetime_to_mongodate(dt) == mongo
 
-
-def test_mongo_to_datetime():
-    for dt, mongo in DATES:
-        assert mongodate_to_datetime(mongo) == dt
+    def test_mongo_to_datetime(self):
+        for dt, mongo in DATES:
+            assert mongodate_to_datetime(mongo) == dt

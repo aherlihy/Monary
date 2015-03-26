@@ -5,58 +5,59 @@ import nose
 import numpy
 import pymongo
 
+from test import unittest
+
 import monary
 
 NUM_TEST_RECORDS = 5000
 
-try:
-    with pymongo.MongoClient() as cx:
-        cx.drop_database("monary_test")
-except (pymongo.errors.ConnectionFailure,
-        pymongo.errors.OperationFailure) as ex:
-    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
+class TestAggregation(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        try:
+            with pymongo.MongoClient() as cx:
+                cx.drop_database("monary_test")
+        except (pymongo.errors.ConnectionFailure,
+                pymongo.errors.OperationFailure) as ex:
+            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
-def setup():
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
+        with pymongo.MongoClient() as c:
+            c.drop_database("monary_test")
 
-        for i in range(NUM_TEST_RECORDS):
-            if i % 2 == 0:
-                doc = {
-                    "_id": i,
-                    "a": 0,
-                }
-            else:
-                doc = {
-                    "_id": i,
-                    "b": 1,
-                }
-            doc["data"] = i % 3
-            c.monary_test.data.insert(doc)
+            for i in range(NUM_TEST_RECORDS):
+                if i % 2 == 0:
+                    doc = {
+                        "_id": i,
+                        "a": 0,
+                    }
+                else:
+                    doc = {
+                        "_id": i,
+                        "b": 1,
+                    }
+                doc["data"] = i % 3
+                c.monary_test.data.insert(doc)
 
+    @classmethod
+    def tearDownClass(cls):
+        with pymongo.MongoClient() as c:
+            c.drop_database("monary_test")
 
-def teardown():
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
+    def aggregate_monary_column(self, colname, coltype, pipeline, **kwargs):
+        with monary.Monary("127.0.0.1") as m:
+            result, = m.aggregate("monary_test", "data", pipeline, [colname],
+                                  [coltype], **kwargs)
+            return result
 
+    def test_group(self):
+        pipeline = [{"$group": {"_id": "$data"}}, {"$sort": {"_id": 1}}]
+        result = self.aggregate_monary_column("_id", "int32", pipeline)
+        expected = numpy.array([0, 1, 2])
+        assert (expected == result).all()
 
-def aggregate_monary_column(colname, coltype, pipeline, **kwargs):
-    with monary.Monary("127.0.0.1") as m:
-        result, = m.aggregate("monary_test", "data", pipeline, [colname],
-                              [coltype], **kwargs)
-        return result
-
-
-def test_group():
-    pipeline = [{"$group": {"_id": "$data"}}, {"$sort": {"_id": 1}}]
-    result = aggregate_monary_column("_id", "int32", pipeline)
-    expected = numpy.array([0, 1, 2])
-    assert (expected == result).all()
-
-
-def test_project():
-    pipeline = [{"$project": {"b": 1, "_id": 0}}]
-    result = aggregate_monary_column("b", "int32", pipeline)
-    assert numpy.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
-    assert result.sum() == NUM_TEST_RECORDS / 2
+    def test_project(self):
+        pipeline = [{"$project": {"b": 1, "_id": 0}}]
+        result = self.aggregate_monary_column("b", "int32", pipeline)
+        assert numpy.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
+        assert result.sum() == NUM_TEST_RECORDS / 2

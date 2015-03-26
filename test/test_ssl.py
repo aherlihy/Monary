@@ -3,6 +3,8 @@ import os
 import nose
 import pymongo
 
+from test import unittest
+
 import monary
 import test_helpers
 
@@ -13,119 +15,112 @@ See test_ssl_instructions.txt.
 """
 
 
-def inittest_cert():
-    cert_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             'certificates')
-    client_pem = os.path.join(cert_path, 'client.pem')
-    ca_pem = os.path.join(cert_path, 'ca.pem')
-    return cert_path, client_pem, ca_pem
+class TestSSLCert(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.cert_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'certificates')
+        cls.client_pem = os.path.join(cls.cert_path, 'client.pem')
+        cls.ca_pem = os.path.join(cls.cert_path, 'ca.pem')
 
-def inittest_ssl():
-    cert_path, client_pem, ca_pem = inittest_cert()
-    try:
-        client = pymongo.MongoClient("mongodb://localhost:27017/?ssl=true",
-                                     ssl=True, ssl_certfile=client_pem,
-                                     ssl_ca_certs=ca_pem)
-        collection = client.test.ssl
-        collection.drop()
-        collection.insert({'x1': 0.0})
-    except pymongo.errors.ConnectionFailure as e:
-        if "SSL handshake failed" in str(e):
-            raise nose.SkipTest("Can't connect to mongod with SSL", str(e))
-        else:
-            raise Exception("Unable to connect to mongod: ", str(e))
-    return cert_path, client_pem, ca_pem
+        try:
+            client = pymongo.MongoClient("mongodb://localhost:27017/?ssl=true",
+                                         ssl=True, ssl_certfile=cls.client_pem,
+                                         ssl_ca_certs=cls.ca_pem)
+            collection = client.test.ssl
+            collection.drop()
+            collection.insert({'x1': 0.0})
+        except pymongo.errors.ConnectionFailure as e:
+            if "SSL handshake failed" in str(e):
+                raise nose.SkipTest("Can't connect to mongod with SSL", str(e))
+            else:
+                raise Exception("Unable to connect to mongod: ", str(e))
 
+    def test_all(self):
+        with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                           pem_file=self.client_pem,
+                           ca_file=self.ca_pem,
+                           ca_dir=self.cert_path,
+                           weak_cert_validation=False) as m:
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
 
-def inittest_no_ssl():
-    cert_path, client_pem, ca_pem = inittest_cert()
-    try:
-        client = pymongo.MongoClient("mongodb://localhost:27017")
-    except pymongo.errors.ConnectionFailure as e:
-        raise nose.SkipTest("Non-SSL connection failed", str(e))
-    else:
-        collection = client.test.ssl
-        collection.drop()
-        collection.insert({'x1': 0.0})
-    return cert_path, client_pem, ca_pem
-
-
-def query_with(m):
-    arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-    assert len(arrays) == 1 and arrays[0] == 0.0
-
-
-def test_all():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with monary.Monary("mongodb://localhost:27017/?ssl=true",
-                       pem_file=client_pem,
-                       ca_file=ca_pem,
-                       ca_dir=cert_path,
-                       weak_cert_validation=False) as m:
-        query_with(m)
-
-
-def test_pem():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with monary.Monary("mongodb://localhost:27017/?ssl=true",
-                       pem_file=client_pem,
-                       weak_cert_validation=True) as m:
-        query_with(m)
-
-
-def test_uri():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with monary.Monary("mongodb://localhost:27017/?ssl=true",
-                       pem_file=client_pem,
-                       ca_file=ca_pem,
-                       ca_dir=cert_path,
-                       weak_cert_validation=True) as m:
-        query_with(m)
-
-
-def test_bad_uri():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with test_helpers.assertraises(monary.monary.MonaryError,
-                                   "Failed to read 4 bytes from socket."):
-        with monary.Monary("mongodb://localhost:27017",
-                           pem_file=client_pem,
-                           ca_file=ca_pem,
-                           ca_dir=cert_path,
+    def test_pem(self):
+        with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                           pem_file=self.client_pem,
                            weak_cert_validation=True) as m:
-            query_with(m)
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
+
+    def test_uri(self):
+        with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                           pem_file=self.client_pem,
+                           ca_file=self.ca_pem,
+                           ca_dir=self.cert_path,
+                           weak_cert_validation=True) as m:
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
+
+    def test_bad_uri(self):
+        with test_helpers.assertraises(monary.monary.MonaryError,
+                                       "Failed to read 4 bytes from socket."):
+            with monary.Monary("mongodb://localhost:27017",
+                               pem_file=self.client_pem,
+                               ca_file=self.ca_pem,
+                               ca_dir=self.cert_path,
+                               weak_cert_validation=True) as m:
+                arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+                assert len(arrays) == 1 and arrays[0] == 0.0
+
+    def test_ssl_false(self):
+        with test_helpers.assertraises(monary.monary.MonaryError,
+                                       "Failed to read 4 bytes from socket."):
+            with monary.Monary("mongodb://localhost:27017/?ssl=false",
+                               pem_file=self.client_pem) as m:
+                arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
+
+    def test_validate_server_cert(self):
+        with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                           pem_file=self.client_pem,
+                           ca_file=self.ca_pem,
+                           weak_cert_validation=False) as m:
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
 
 
-def test_ssl_false_no_ssl():
-    client_path, client_pem, ca_pem = inittest_no_ssl()
-    with monary.Monary("mongodb://localhost:27017/?ssl=false",
-                       pem_file=client_pem) as m:
-        query_with(m)
+class TestNoSSL(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.cert_path = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)),
+            'certificates')
+        cls.client_pem = os.path.join(cls.cert_path, 'client.pem')
+        cls.ca_pem = os.path.join(cls.cert_path, 'ca.pem')
 
-def test_bad_uri_no_ssl():
-    cert_path, client_pem, ca_pem = inittest_no_ssl()
-    with monary.Monary("mongodb://localhost:27017",
-                       pem_file=client_pem,
-                       ca_file=ca_pem,
-                       ca_dir=cert_path,
-                       weak_cert_validation=True) as m:
-        query_with(m)
+        try:
+            client = pymongo.MongoClient("mongodb://localhost:27017")
+        except pymongo.errors.ConnectionFailure as e:
+            raise nose.SkipTest("Non-SSL connection failed", str(e))
+        else:
+            collection = client.test.ssl
+            collection.drop()
+            collection.insert({'x1': 0.0})
 
-
-def test_ssl_false():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with test_helpers.assertraises(monary.monary.MonaryError,
-                                   "Failed to read 4 bytes from socket."):
+    def test_ssl_false_no_ssl(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=false",
-                           pem_file=client_pem) as m:
-            query_with(m)
+                           pem_file=self.client_pem) as m:
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0
 
-
-def test_validate_server_cert():
-    cert_path, client_pem, ca_pem = inittest_ssl()
-    with monary.Monary("mongodb://localhost:27017/?ssl=true",
-                       pem_file=client_pem,
-                       ca_file=ca_pem,
-                       weak_cert_validation=False) as m:
-        query_with(m)
+    def test_bad_uri_no_ssl(self):
+        with monary.Monary("mongodb://localhost:27017",
+                           pem_file=self.client_pem,
+                           ca_file=self.ca_pem,
+                           ca_dir=self.cert_path,
+                           weak_cert_validation=True) as m:
+            arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
+            assert len(arrays) == 1 and arrays[0] == 0.0

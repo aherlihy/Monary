@@ -4,76 +4,74 @@
 import nose
 import pymongo
 
+from test import unittest
+
 import monary
 import test_helpers
 
-db = None
 
-try:
-    pymongo.MongoClient()
-except pymongo.errors.ConnectionFailure as e:
-    raise nose.SkipTest("Unable to connect to mongod: ", str(e))
+class TestAuthentication(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        try:
+            pymongo.MongoClient()
+        except pymongo.errors.ConnectionFailure as e:
+            raise nose.SkipTest("Unable to connect to mongod: ", str(e))
 
+        connection = pymongo.MongoClient()
+        cls.db = connection.admin
+        cls.db.add_user("monary_test_user", "monary_test_pass", roles=["root"])
+        cls.db.authenticate("monary_test_user", "monary_test_pass")
+        cmd_opts = cls.db.command('getCmdLineOpts')['argv']
+        if "--auth" not in cmd_opts:
+            raise nose.SkipTest("The mongo server (mongod) needs to be "
+                                "running with authentication (--auth)")
+        cls.db.junk.insert({"route": 66})
 
-def setup():
-    global db
-    connection = pymongo.MongoClient()
-    db = connection.admin
-    db.add_user("monary_test_user", "monary_test_pass", roles=["root"])
-    db.authenticate("monary_test_user", "monary_test_pass")
-    cmd_opts = db.command('getCmdLineOpts')['argv']
-    if "--auth" not in cmd_opts:
-        raise nose.SkipTest("The mongo server (mongod) needs to be "
-                            "running with authentication (--auth)")
-    db.junk.insert({"route": 66})
+    @classmethod
+    def tearDownClass(cls):
+        cls.db.junk.drop()
+        cls.db.remove_user("monary_test_user")
 
+    def test_with_authenticate(self):
+        with monary.Monary(host="127.0.0.1",
+                           database="admin",
+                           username="monary_test_user",
+                           password="monary_test_pass") as m:
+            col, = m.query("admin", "junk",
+                           {}, ["route"], ["int32"])
+            assert col[0] == 66, "test value could not be retrieved"
 
-def teardown():
-    db.junk.drop()
-    db.remove_user("monary_test_user")
+    def test_with_authenticate_from_uri(self):
+        with monary.Monary("mongodb://monary_test_user:monary_test_"
+                           "pass@127.0.0.1:27017/admin") as m:
+            col, = m.query("admin", "junk",
+                           {}, ["route"], ["int32"])
+            assert col[0] == 66, "test value could not be retrieved"
 
+    def test_bad_authenticate(self):
+        with test_helpers.assertraises(monary.monary.MonaryError,
+                                       "Failed to authenticate credentials"):
+            with monary.Monary(host="127.0.0.1",
+                               database="admin",
+                               username="monary_test_user",
+                               password="monary_test_wrong_pass") as m:
+                m.count("admin", "junk", {})
 
-def test_with_authenticate():
-    with monary.Monary(host="127.0.0.1",
-                       database="admin",
-                       username="monary_test_user",
-                       password="monary_test_pass") as m:
-        col, = m.query("admin", "junk",
-                       {}, ["route"], ["int32"])
-        assert col[0] == 66, "test value could not be retrieved"
-
-
-def test_with_authenticate_from_uri():
-    with monary.Monary("mongodb://monary_test_user:monary_test_"
-                       "pass@127.0.0.1:27017/admin") as m:
-        col, = m.query("admin", "junk",
-                       {}, ["route"], ["int32"])
-        assert col[0] == 66, "test value could not be retrieved"
-
-
-def test_bad_authenticate():
-    with test_helpers.assertraises(monary.monary.MonaryError,
-                                   "Failed to authenticate credentials"):
+    def test_reconnection(self):
         with monary.Monary(host="127.0.0.1",
                            database="admin",
                            username="monary_test_user",
                            password="monary_test_wrong_pass") as m:
-            m.count("admin", "junk", {})
+            with test_helpers.assertraises(monary.monary.MonaryError,
+                                           "Failed to authenticate"
+                                           " credentials"):
+                m.count("admin", "junk", {})
 
-
-def test_reconnection():
-    with monary.Monary(host="127.0.0.1",
-                       database="admin",
-                       username="monary_test_user",
-                       password="monary_test_wrong_pass") as m:
-        with test_helpers.assertraises(monary.monary.MonaryError,
-                                       "Failed to authenticate credentials"):
-            m.count("admin", "junk", {})
-
-        m.connect(host="127.0.0.1",
-                  database="admin",
-                  username="monary_test_user",
-                  password="monary_test_pass")
-        col, = m.query("admin", "junk",
-                       {}, ["route"], ["int32"])
-        assert col[0] == 66, "test value could not be retrieved"
+            m.connect(host="127.0.0.1",
+                      database="admin",
+                      username="monary_test_user",
+                      password="monary_test_pass")
+            col, = m.query("admin", "junk",
+                           {}, ["route"], ["int32"])
+            assert col[0] == 66, "test value could not be retrieved"
