@@ -1,6 +1,6 @@
 from bson import InvalidDocument
 import pymongo
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 from nose import SkipTest
 
 import monary
@@ -10,7 +10,7 @@ import test_helpers
 try:
     with pymongo.MongoClient() as cx:
         cx.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as ex:
+except ConnectionFailure as ex:
     raise SkipTest("Unable to connect to mongod: ", str(ex))
 
 

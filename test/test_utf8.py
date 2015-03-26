@@ -5,7 +5,7 @@
 import sys
 
 import pymongo
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 from nose import SkipTest
 
 import monary
@@ -13,7 +13,7 @@ import monary
 try:
     with pymongo.MongoClient() as c:
         c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
+except ConnectionFailure as e:
     raise SkipTest("Unable to connect to mongod: ", str(e))
 
 
