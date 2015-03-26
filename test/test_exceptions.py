@@ -193,4 +193,3 @@ def test_monary_aggregate2():
             m.aggregate("test", "collection", {"hi": "you"},
                         ['x1', 'x2', 'x3', 'x4', 'x5'],
                         ["float64"] * 5)
-

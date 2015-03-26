@@ -210,7 +210,7 @@ def make_bson(obj):
        :rtype: str
     """
     if obj is None:
-        obj = { }
+        obj = {}
     if not isinstance(obj, bytes_type):
         obj = bson.BSON.encode(obj)
     return obj
@@ -262,7 +262,7 @@ def validate_insert_fields(fields):
 def get_ordering_dict(obj):
     """Converts a field/direction specification to an OrderedDict, suitable
        for BSON encoding.
-    
+
        :param obj: single field name or list of (field, direction) pairs
        :returns: mapping representing the field/direction list
        :rtype: OrderedDict
@@ -280,20 +280,20 @@ def get_ordering_dict(obj):
 
 def get_plain_query(query):
     """Composes a plain query from the given query object.
-    
+
        :param dict query: query dictionary (or None)
        :returns: BSON encoded query (byte string)
        :rtype: str
     """
     if query is None:
-        query = { }
+        query = {}
     return make_bson(query)
 
 
 def get_full_query(query, sort=None, hint=None):
     """Composes a full query from the given query object, and sort and hint
     clauses, if provided.
-    
+
      :param dict query: query dictionary (or None)
      :param sort: (optional) single field name or list of (field, direction)
                   pairs
@@ -303,7 +303,7 @@ def get_full_query(query, sort=None, hint=None):
      :rtype: str
     """
     if query is None:
-        query = { }
+        query = {}
 
     if sort or hint:
         query = OrderedDict([("$query", query)])
@@ -320,7 +320,7 @@ def get_pipeline(pipeline):
     if isinstance(pipeline, list):
         pipeline = {"pipeline": pipeline}
     elif isinstance(pipeline, dict):
-        if not "pipeline" in pipeline:
+        if "pipeline" not in pipeline:
             pipeline = {"pipeline": [pipeline]}
     else:
         raise TypeError("Pipeline must be a dict or a list")
@@ -329,7 +329,7 @@ def get_pipeline(pipeline):
 
 class Monary(object):
     """Represents a 'monary' connection to a particular MongoDB server."""
-    
+
     def __init__(self, host="localhost", port=27017, username=None,
                  password=None, database=None, pem_file=None,
                  pem_pwd=None, ca_file=None, ca_dir=None, crl_file=None,
@@ -366,7 +366,6 @@ class Monary(object):
         self.connect(host, port, username, password, database,
                      pem_file, pem_pwd, ca_file, ca_dir, crl_file,
                      weak_cert_validation, options)
-
 
     def connect(self, host="localhost", port=27017, username=None,
                 password=None, database=None, p_file=None,
@@ -439,7 +438,6 @@ class Monary(object):
         if self._connection is None:
             raise MonaryError(err.message)
 
-
     def _make_column_data(self, fields, types, count):
         """Builds the 'column data' structure used by the underlying cmonary
         code to populate the arrays.  This code must allocate the array
@@ -449,7 +447,7 @@ class Monary(object):
          :param fields: list of field names
          :param types: list of Monary type names
          :param count: size of storage to be allocated
-           
+
          :returns: (coldata, colarrays) where coldata is the cmonary
                     column data storage structure, and colarrays is a list of
                     numpy.ndarray instances
@@ -467,7 +465,7 @@ class Monary(object):
         coldata = cmonary.monary_alloc_column_data(numcols, count)
         if coldata is None:
             raise MonaryError("Unable to allocate column data")
-        colarrays = [ ]
+        colarrays = []
         for i, (field, typename) in enumerate(zip(fields, types)):
             if len(field) > MAX_STRING_LENGTH:
                 raise ValueError("Length of field name %s exceeds "
@@ -514,11 +512,11 @@ class Monary(object):
 
     def count(self, db, coll, query=None):
         """Count the number of records returned by the given query.
-        
+
            :param db: name of database
            :param coll: name of the collection to be queried
            :param query: (optional) dictionary of Mongo query parameters
-           
+
            :returns: the number of records
            :rtype: int
         """
@@ -545,7 +543,7 @@ class Monary(object):
               limit=0, offset=0,
               do_count=True, select_fields=False):
         """Performs an array query.
-        
+
            :param db: name of database
            :param coll: name of the collection to be queried
            :param query: dictionary of Mongo query parameters
@@ -571,7 +569,7 @@ class Monary(object):
 
         plain_query = get_plain_query(query)
         full_query = get_full_query(query, sort, hint)
-        
+
         if not do_count and limit > 0:
             count = limit
         else:
@@ -647,7 +645,7 @@ class Monary(object):
            where each block may contain up to *block_size* elements.
 
            An example::
-        
+
                cumulative_gain = 0.0
                for buy_price_block, sell_price_block in (
                     monary.block_query("finance", "assets", {"sold": True},
@@ -951,7 +949,7 @@ class Monary(object):
         if self._connection is not None:
             cmonary.monary_disconnect(self._connection)
             self._connection = None
-        
+
     def __enter__(self):
         """Monary connections meet the ContextManager protocol."""
         return self
@@ -959,7 +957,7 @@ class Monary(object):
     def __exit__(self, *args):
         """Monary connections meet the ContextManager protocol."""
         self.close()
-        
+
     def __del__(self):
         """Closes the Monary connection and cleans up resources."""
         self.close()

@@ -39,7 +39,7 @@ def setup():
     c.drop_database("monary_test")
     db = c.monary_test
     coll = db.test_data
-    records = [ ]
+    records = []
 
     random.seed(1234)  # For reproducibility.
 

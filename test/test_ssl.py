@@ -129,5 +129,3 @@ def test_validate_server_cert():
                        ca_file=ca_pem,
                        weak_cert_validation=False) as m:
         query_with(m)
-
-

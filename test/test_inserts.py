@@ -65,12 +65,12 @@ seq = np.ma.masked_array(np.arange(NUM_TEST_RECORDS, dtype=np.int64),
 seq_type = "int64"
 
 
-def NTR():
+def ntr():
     return range(NUM_TEST_RECORDS)
 
 
 def rand_bools():
-    return [bool(random.getrandbits(1)) for _ in NTR()]
+    return [bool(random.getrandbits(1)) for _ in ntr()]
 
 
 def make_ma(data, dtype):
@@ -114,68 +114,68 @@ def setup():
     TYPE_INFERABLE_ARRAYS_TYPES.append("bool")
 
     int8_arr = make_ma([random.randint(0 - 2 ** 4, 2 ** 4 - 1)
-                        for _ in NTR()], "int8")
+                        for _ in ntr()], "int8")
     TYPE_INFERABLE_ARRAYS.append(int8_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("int8")
 
     int16_arr = make_ma([random.randint(0 - 2 ** 8, 2 ** 8 - 1)
-                         for _ in NTR()], "int16")
+                         for _ in ntr()], "int16")
     TYPE_INFERABLE_ARRAYS.append(int16_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("int16")
 
     int32_arr = make_ma([random.randint(0 - 2 ** 16, 2 ** 16 - 1)
-                         for _ in NTR()], "int32")
+                         for _ in ntr()], "int32")
     TYPE_INFERABLE_ARRAYS.append(int32_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("int32")
 
     int64_arr = make_ma([random.randint(0 - 2 ** 32, 2 ** 32 - 1)
-                         for _ in NTR()], "int64")
+                         for _ in ntr()], "int64")
     TYPE_INFERABLE_ARRAYS.append(int64_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("int64")
 
     uint8_arr = make_ma([random.randint(0, 2 ** 8 - 1)
-                         for _ in NTR()], "uint8")
+                         for _ in ntr()], "uint8")
     TYPE_INFERABLE_ARRAYS.append(uint8_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("uint8")
 
     uint16_arr = make_ma([random.randint(0, 2 ** 16 - 1)
-                          for _ in NTR()], "uint16")
+                          for _ in ntr()], "uint16")
     TYPE_INFERABLE_ARRAYS.append(uint16_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("uint16")
 
     uint32_arr = make_ma([random.randint(0, 2 ** 32 - 1)
-                          for _ in NTR()], "uint32")
+                          for _ in ntr()], "uint32")
     TYPE_INFERABLE_ARRAYS.append(uint32_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("uint32")
 
     uint64_arr = make_ma([random.randint(0, 2 ** 64 - 1)
-                          for _ in NTR()], "uint64")
+                          for _ in ntr()], "uint64")
     TYPE_INFERABLE_ARRAYS.append(uint64_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("uint64")
 
     float32_arr = make_ma([random.uniform(-1e30, 1e30)
-                           for _ in NTR()], "float32")
+                           for _ in ntr()], "float32")
     TYPE_INFERABLE_ARRAYS.append(float32_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("float32")
 
     float64_arr = make_ma([random.uniform(-1e30, 1e30)
-                           for _ in NTR()], "float64")
+                           for _ in ntr()], "float64")
     TYPE_INFERABLE_ARRAYS.append(float64_arr)
     TYPE_INFERABLE_ARRAYS_TYPES.append("float64")
 
-    timestamp_arr = make_ma([random_timestamp() for _ in NTR()], "uint64")
+    timestamp_arr = make_ma([random_timestamp() for _ in ntr()], "uint64")
     NON_TYPE_INFERABLE_ARRAYS.append(timestamp_arr)
     NON_TYPE_INFERABLE_ARRAYS_TYPES.append("timestamp")
 
-    date_arr = make_ma([random_date() for _ in NTR()], "int64")
+    date_arr = make_ma([random_date() for _ in ntr()], "int64")
     NON_TYPE_INFERABLE_ARRAYS.append(date_arr)
     NON_TYPE_INFERABLE_ARRAYS_TYPES.append("date")
 
-    string_arr = make_ma([random_string(10) for _ in NTR()], "S10")
+    string_arr = make_ma([random_string(10) for _ in ntr()], "S10")
     NON_TYPE_INFERABLE_ARRAYS.append(string_arr)
     NON_TYPE_INFERABLE_ARRAYS_TYPES.append("string:10")
 
-    bin_arr = make_ma([os.urandom(20) for _ in NTR()], "<V20")
+    bin_arr = make_ma([os.urandom(20) for _ in ntr()], "<V20")
     NON_TYPE_INFERABLE_ARRAYS.append(bin_arr)
     NON_TYPE_INFERABLE_ARRAYS_TYPES.append("binary:20")
 
@@ -352,7 +352,7 @@ def test_retrieve_nested():
 
 def test_insert_bson():
     docs = []
-    for i in NTR():
+    for i in ntr():
         doc = {"subdoc": {"num": random.randint(0, 255)}}
         if i % 2 == 0:
             doc["subdoc"]["bool"] = bool(random.getrandbits(1))
@@ -433,7 +433,8 @@ def test_insert_errors():
         nums = np.ma.masked_array(
             np.arange(NUM_TEST_RECORDS, dtype=np.int64),
             np.zeros(NUM_TEST_RECORDS))
-        ids = m.insert("monary_test", "data", [monary.MonaryParam(nums, "_id")])
+        ids = m.insert("monary_test", "data",
+                       [monary.MonaryParam(nums, "_id")])
 
         assert len(ids) == len(nums)
         assert ids.count() == len(nums) - len(threes)
