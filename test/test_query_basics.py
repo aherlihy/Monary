@@ -4,22 +4,18 @@
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
 NUM_TEST_RECORDS = 5000
 
 
-class TestQueryBasics(unittest.TestCase):
+class TestQueryBasics(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestQueryBasics, cls).setUpClass()
+
         with pymongo.MongoClient() as c:
             # Ensure that database does not exist.
             c.drop_database("monary_test")

@@ -2,20 +2,15 @@ import bson
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
 
-class TestExceptions(unittest.TestCase):
+class TestExceptions(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestExceptions, cls).setUpClass()
 
     def test_get_monary_numpy_type1(self):
         with self.assertRaisesRegexp(

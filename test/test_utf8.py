@@ -7,20 +7,15 @@ import sys
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
 
-class TestUTF8(unittest.TestCase):
+class TestUTF8(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestUTF8, cls).setUpClass()
 
         cls.expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]
         if sys.version_info[0] < 3:

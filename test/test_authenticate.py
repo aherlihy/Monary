@@ -4,18 +4,15 @@
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
 
-class TestAuthentication(unittest.TestCase):
+class TestAuthentication(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            pymongo.MongoClient()
-        except pymongo.errors.ConnectionFailure as e:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(e))
+        super(TestAuthentication, cls).setUpClass()
 
         connection = pymongo.MongoClient()
         cls.db = connection.admin

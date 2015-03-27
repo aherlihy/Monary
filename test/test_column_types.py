@@ -11,7 +11,7 @@ import nose
 import numpy
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
@@ -20,16 +20,11 @@ PY3 = sys.version_info[0] >= 3
 NUM_TEST_RECORDS = 100
 
 
-class TestColumnTypes(unittest.TestCase):
+class TestColumnTypes(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestColumnTypes, cls).setUpClass()
 
         c = pymongo.MongoClient()
         # Ensure that database does not exist.

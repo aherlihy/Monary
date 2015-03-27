@@ -4,7 +4,7 @@
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
@@ -13,15 +13,10 @@ NUM_TEST_RECORDS = 5000
 BLOCK_SIZE = 32 * 50
 
 
-class TestBlockQuery(unittest.TestCase):
+class TestBlockQuery(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestBlockQuery, cls).setUpClass()
 
         cls.records = []
         with pymongo.MongoClient("127.0.0.1", 27017) as c:

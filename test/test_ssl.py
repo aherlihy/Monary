@@ -3,7 +3,7 @@ import os
 import nose
 import pymongo
 
-from test import unittest
+from test import IntegrationTest, unittest
 
 import monary
 
@@ -33,7 +33,8 @@ class TestSSLCert(unittest.TestCase):
             collection.insert({'x1': 0.0})
         except pymongo.errors.ConnectionFailure as e:
             if "SSL handshake failed" in str(e):
-                raise nose.SkipTest("Can't connect to mongod with SSL", str(e))
+                raise nose.SkipTest("Can't connect to mongod with SSL: " +
+                                    e.message)
             else:
                 raise Exception("Unable to connect to mongod: ", str(e))
 
@@ -90,21 +91,19 @@ class TestSSLCert(unittest.TestCase):
             assert len(arrays) == 1 and arrays[0] == 0.0
 
 
-class TestNoSSL(unittest.TestCase):
+class TestNoSSL(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
+        super(TestNoSSL, cls).setUpClass()
+
         cls.cert_path = os.path.join(os.path.dirname(
             os.path.realpath(__file__)),
             'certificates')
         cls.client_pem = os.path.join(cls.cert_path, 'client.pem')
         cls.ca_pem = os.path.join(cls.cert_path, 'ca.pem')
 
-        try:
-            client = pymongo.MongoClient("mongodb://localhost:27017")
-        except pymongo.errors.ConnectionFailure as e:
-            raise nose.SkipTest("Non-SSL connection failed", str(e))
-        else:
+        with pymongo.MongoClient() as client:
             collection = client.test.ssl
             collection.drop()
             collection.insert({'x1': 0.0})

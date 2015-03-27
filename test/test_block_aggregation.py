@@ -5,22 +5,17 @@ import nose
 import numpy
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
 NUM_TEST_RECORDS = 5000
 
 
-class TestBlockAggregation(unittest.TestCase):
+class TestBlockAggregation(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestBlockAggregation, cls).setUpClass()
 
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")

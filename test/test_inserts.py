@@ -14,7 +14,7 @@ import nose
 import numpy as np
 import pymongo
 
-from test import unittest
+from test import IntegrationTest
 
 import monary
 
@@ -23,7 +23,7 @@ PY3 = sys.version_info[0] >= 3
 NUM_TEST_RECORDS = 14000
 
 
-class TestAggregation(unittest.TestCase):
+class TestAggregation(IntegrationTest):
 
     # This will hold all of the masked arrays that have inferable types.
     # These such arrays are those of type bool, int, uint, and float.
@@ -65,12 +65,7 @@ class TestAggregation(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        try:
-            with pymongo.MongoClient() as cx:
-                cx.drop_database("monary_test")
-        except (pymongo.errors.ConnectionFailure,
-                pymongo.errors.OperationFailure) as ex:
-            raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
+        super(TestAggregation, cls).setUpClass()
 
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
