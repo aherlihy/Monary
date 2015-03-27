@@ -7,7 +7,6 @@ import pymongo
 from test import unittest
 
 import monary
-import test_helpers
 
 
 class TestAuthentication(unittest.TestCase):
@@ -50,8 +49,8 @@ class TestAuthentication(unittest.TestCase):
             assert col[0] == 66, "test value could not be retrieved"
 
     def test_bad_authenticate(self):
-        with test_helpers.assertraises(monary.monary.MonaryError,
-                                       "Failed to authenticate credentials"):
+        with self.assertRaisesRegexp(monary.monary.MonaryError,
+                                     "Failed to authenticate credentials"):
             with monary.Monary(host="127.0.0.1",
                                database="admin",
                                username="monary_test_user",
@@ -63,9 +62,9 @@ class TestAuthentication(unittest.TestCase):
                            database="admin",
                            username="monary_test_user",
                            password="monary_test_wrong_pass") as m:
-            with test_helpers.assertraises(monary.monary.MonaryError,
-                                           "Failed to authenticate"
-                                           " credentials"):
+            with self.assertRaisesRegexp(monary.monary.MonaryError,
+                                         "Failed to authenticate"
+                                         " credentials"):
                 m.count("admin", "junk", {})
 
             m.connect(host="127.0.0.1",

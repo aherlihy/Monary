@@ -6,7 +6,6 @@ import pymongo
 from test import unittest
 
 import monary
-import test_helpers
 
 """Test file for SSL functionality of monary.
 
@@ -64,8 +63,8 @@ class TestSSLCert(unittest.TestCase):
             assert len(arrays) == 1 and arrays[0] == 0.0
 
     def test_bad_uri(self):
-        with test_helpers.assertraises(monary.monary.MonaryError,
-                                       "Failed to read 4 bytes from socket."):
+        with self.assertRaisesRegexp(monary.monary.MonaryError,
+                                     "Failed to read 4 bytes from socket."):
             with monary.Monary("mongodb://localhost:27017",
                                pem_file=self.client_pem,
                                ca_file=self.ca_pem,
@@ -75,8 +74,8 @@ class TestSSLCert(unittest.TestCase):
                 assert len(arrays) == 1 and arrays[0] == 0.0
 
     def test_ssl_false(self):
-        with test_helpers.assertraises(monary.monary.MonaryError,
-                                       "Failed to read 4 bytes from socket."):
+        with self.assertRaisesRegexp(monary.monary.MonaryError,
+                                     "Failed to read 4 bytes from socket."):
             with monary.Monary("mongodb://localhost:27017/?ssl=false",
                                pem_file=self.client_pem) as m:
                 arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
