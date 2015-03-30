@@ -27,16 +27,17 @@ class TestSSLCert(unittest.TestCase):
         try:
             client = pymongo.MongoClient("mongodb://localhost:27017/?ssl=true",
                                          ssl=True, ssl_certfile=cls.client_pem,
-                                         ssl_ca_certs=cls.ca_pem)
+                                         ssl_ca_certs=cls.ca_pem,
+                                         serverSelectionTimeoutMS=5)
             collection = client.test.ssl
             collection.drop()
-            collection.insert({'x1': 0.0})
+            collection.insert_one({'x1': 0.0})
         except pymongo.errors.ConnectionFailure as e:
             if "SSL handshake failed" in str(e):
                 raise nose.SkipTest("Can't connect to mongod with SSL: " +
-                                    e.message)
+                                    str(e))
             else:
-                raise Exception("Unable to connect to mongod: ", str(e))
+                raise e
 
     def test_all(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=true",
@@ -106,7 +107,7 @@ class TestNoSSL(IntegrationTest):
         with pymongo.MongoClient() as client:
             collection = client.test.ssl
             collection.drop()
-            collection.insert({'x1': 0.0})
+            collection.insert_one({'x1': 0.0})
 
     def test_ssl_false_no_ssl(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=false",

@@ -24,9 +24,9 @@ class TestUTF8(IntegrationTest):
 
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
-            c.monary_test.data.insert(
+            c.monary_test.data.insert_many([
                 {"test": my_str, "sequence": i}
-                for i, my_str in enumerate(cls.expected))
+                for i, my_str in enumerate(cls.expected)])
 
     @classmethod
     def tearDownClass(cls):

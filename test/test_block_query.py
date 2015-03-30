@@ -28,7 +28,7 @@ class TestBlockQuery(IntegrationTest):
                 if (i % 2) == 0:
                     r["x"] = 3
                 cls.records.append(r)
-            coll.insert(cls.records, safe=True)
+            coll.insert_many(cls.records)
             print("setup complete")
 
     @classmethod

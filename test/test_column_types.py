@@ -66,7 +66,7 @@ class TestColumnTypes(IntegrationTest):
                             for i in range(random.randint(1, 5))],
                 subdocumentval=dict(subkey=random.randint(0, 255)))
             cls.records.append(record)
-        coll.insert(cls.records, safe=True)
+        coll.insert_many(cls.records)
         print("setup complete")
 
     @classmethod

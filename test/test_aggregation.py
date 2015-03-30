@@ -32,7 +32,7 @@ class TestAggregation(IntegrationTest):
                         "b": 1,
                     }
                 doc["data"] = i % 3
-                c.monary_test.data.insert(doc)
+                c.monary_test.data.insert_one(doc)
 
     @classmethod
     def tearDownClass(cls):

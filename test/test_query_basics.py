@@ -27,7 +27,7 @@ class TestQueryBasics(IntegrationTest):
                 if (i % 2) == 0:
                     r['x'] = 3
                 records.append(r)
-            coll.insert(records, safe=True)
+            coll.insert_many(records)
             print("setup complete")
 
     @classmethod

@@ -22,7 +22,7 @@ class TestAuthentication(IntegrationTest):
         if "--auth" not in cmd_opts:
             raise nose.SkipTest("The mongo server (mongod) needs to be "
                                 "running with authentication (--auth)")
-        cls.db.junk.insert({"route": 66})
+        cls.db.junk.insert_one({"route": 66})
 
     @classmethod
     def tearDownClass(cls):
