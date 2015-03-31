@@ -1,23 +1,17 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
-
 import os
-import platform
-import re
-import subprocess
+import pkgconfig
 import sys
-from distutils.core import Command
-from distutils.command.build import build
-from distutils.ccompiler import new_compiler
 
 # Don't force people to install setuptools unless
 # we have to.
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup
+    from setuptools import setup, Extension
 
 test_requires = []
 test_suite = "test"
@@ -29,25 +23,8 @@ DEBUG = False
 
 VERSION = "0.3.0"
 
-# Hijack the build process by inserting specialized commands into
-# the list of build sub commands
-build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build.sub_commands
-
-# Platform specific stuff
-if platform.system() == 'Windows':
-    compiler_kw = {'compiler' : 'mingw32'}
-    linker_kw = {'libraries' : ['ws2_32']}
-    so_target = 'libcmonary.dll'
-else:
-    compiler_kw = {}
-    linker_kw = {'libraries' : []}
-    so_target = 'libcmonary.so' 
-
-compiler = new_compiler(**compiler_kw)
-
-MONARY_DIR = "monary"
-CMONGO_SRC = "mongodb-mongo-c-driver-1.0.0"
 CFLAGS = ["-fPIC", "-O2"]
+settings = {}
 
 if not DEBUG:
     CFLAGS.append("-DNDEBUG")
@@ -56,58 +33,31 @@ class BuildException(Exception):
     """Indicates an error occurred while compiling from source."""
     pass
 
-# I suspect I could be using the build_clib command for this, but don't know how.
-class BuildCMongoDriver(Command):
-    """Custom command to build the C Mongo driver. Relies on autotools."""
-    description = "builds the C Mongo driver"
-    user_options = [ ]
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        try:
-            os.chdir(CMONGO_SRC)
-            env = os.environ.copy()
-            env.setdefault('CFLAGS', '')
-            env['CFLAGS'] += ' -fPIC'
-            status = subprocess.call(["./configure", "--enable-static",
-                                      "--without-documentation",
-                                      "--disable-maintainer-mode",
-                                      "--disable-tests", "--disable-examples"], env=env)
-            if status != 0:
-                raise BuildException("configure script failed with exit status %d" % status)
 
-            status = subprocess.call(["make"])
-            if status != 0:
-                raise BuildException("make failed with exit status %d" % status)
-            # after configuring, add libs to linker_kw
-            with open(os.path.join("src", "libmongoc-1.0.pc")) as f:
-                libs = re.search(r"Libs:\s+(.+)$", f.read(), flags=re.MULTILINE).group(1)
-                libs = [l[2:] for l in re.split(r"\s+", libs)[:-1] if l.startswith("-l")]
-                linker_kw["libraries"] += libs
-        finally:
-            os.chdir("..")
+try:
+    if pkgconfig.exists("libmongoc-1.0"):
+        pkgcfg = pkgconfig.parse("libmongoc-1.0")
+        settings['include_dirs'] = list(pkgcfg['include_dirs'])
+        settings['library_dirs'] = list(pkgcfg['library_dirs'])
+        settings['libraries'] = list(pkgcfg['libraries'])
+        settings['define_macros'] = list(pkgcfg['define_macros'])
+    else:
+        raise BuildException("Error, unable to find libmongoc-1.0"
+                             " with pkgconfig")
+except EnvironmentError as e:
+    raise BuildException("Error in pkgconfig: ", e)
 
-class BuildCMonary(Command):
-    """Custom command to build the cmonary library, static linking to the cmongo drivers,
-       a producing a .so library that can be loaded via ctypes.
-    """
-    description = "builds the cmonary library (for ctypes)"
-    user_options = [ ]
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        compiler.compile([os.path.join(MONARY_DIR, "cmonary.c")],
-                         extra_preargs=CFLAGS,
-                         include_dirs=[os.path.join(CMONGO_SRC, "src", "mongoc"),
-                                       os.path.join(CMONGO_SRC, "src", "libbson", "src", "bson")])
-        compiler.link_shared_lib([os.path.join(MONARY_DIR, "cmonary.o"),
-                                  os.path.join(CMONGO_SRC, ".libs", "libmongoc-1.0.a"),
-                                  os.path.join(CMONGO_SRC, "src", "libbson", ".libs", "libbson-1.0.a")],
-                                  "cmonary", "monary", **linker_kw)
+
+module = Extension('monary.libcmonary',
+                   extra_compile_args=CFLAGS,
+                   include_dirs=settings['include_dirs'],
+                   library_dirs=settings['library_dirs'],
+                   libraries=settings['libraries'],
+                   define_macros=settings['define_macros'],
+                   sources=[os.path.join("monary/cmonary.c")],
+
+                   )
+
 
 
 # Get README info
@@ -124,7 +74,8 @@ setup(
     setup_requires = ["pymongo", "numpy"],
     tests_require = test_requires,
     package_dir = {"monary": "monary"},
-    package_data = {"monary": [so_target]},
+
+    ext_modules = [module],
 
     author = "David J. C. Beach",
     author_email = "info@djcinnovations.com",
@@ -148,9 +99,8 @@ setup(
     ],
     url = "http://bitbucket.org/djcbeach/monary/",
     test_suite = test_suite,
-
-    cmdclass = {
-        'build_cmongo': BuildCMongoDriver,
-        'build_cmonary': BuildCMonary,
-    }
+    # cmdclass = {
+    #     'build_cmongo': BuildCMongoDriver,
+    #     'build_cmonary': BuildCMonary
+    # }
 )

@@ -59,16 +59,12 @@ def _load_cmonary_lib():
     this module).
     """
     global cmonary
-    thismodule = __file__
-    abspath = os.path.abspath(thismodule)
-    moduledir = list(os.path.split(abspath))[:-1]
+    moduledir = os.path.dirname(os.path.abspath(__file__))
     if platform.system() == 'Windows':
-        ctypes.CDLL(os.path.join(*(moduledir + ['libbson-1.0.dll'])))
-        ctypes.CDLL(os.path.join(*(moduledir + ['libmongoc-1.0.dll'])))
         cmonary_fname = "libcmonary.dll"
     else:
         cmonary_fname = "libcmonary.so"
-    cmonaryfile = os.path.join(*(moduledir + [cmonary_fname]))
+    cmonaryfile = os.path.join(moduledir, cmonary_fname)
     cmonary = ctypes.CDLL(cmonaryfile)
 
 _load_cmonary_lib()
