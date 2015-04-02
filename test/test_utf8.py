@@ -4,7 +4,6 @@
 
 import sys
 
-import nose
 import pymongo
 
 from test import IntegrationTest

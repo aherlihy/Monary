@@ -1,6 +1,4 @@
 import bson
-import nose
-import pymongo
 
 from test import IntegrationTest
 

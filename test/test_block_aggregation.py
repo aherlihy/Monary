@@ -1,7 +1,6 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import nose
 import numpy
 import pymongo
 

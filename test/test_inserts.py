@@ -10,7 +10,6 @@ import sys
 import time
 
 import bson
-import nose
 import numpy as np
 import pymongo
 
@@ -133,7 +132,7 @@ class TestAggregation(IntegrationTest):
         cls.TYPE_INFERABLE_ARRAYS.append(cls.float64_arr)
         cls.TYPE_INFERABLE_ARRAYS_TYPES.append("float64")
 
-        # Calcuate random timestamp.
+        # Calculate random timestamp.
         ts = bson.timestamp.Timestamp(
             time=random.randint(0, 2147483647),
             inc=random.randint(0, 2147483647))

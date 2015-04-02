@@ -7,7 +7,6 @@ import struct
 import sys
 
 import bson
-import nose
 import numpy
 import pymongo
 
