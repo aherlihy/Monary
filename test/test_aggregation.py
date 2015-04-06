@@ -1,20 +1,19 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import nose
 import numpy
 import pymongo
-from pymongo.errors import ConnectionFailure, OperationFailure
-from nose import SkipTest
 
 import monary
 
 NUM_TEST_RECORDS = 5000
 
 try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except (ConnectionFailure, OperationFailure) as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except pymongo.errors.ConnectionFailure as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 
 def setup():
@@ -24,13 +23,13 @@ def setup():
         for i in range(NUM_TEST_RECORDS):
             if i % 2 == 0:
                 doc = {
-                    "_id" : i,
-                    "a" : 0,
+                    "_id": i,
+                    "a": 0,
                 }
             else:
                 doc = {
-                    "_id" : i,
-                    "b" : 1,
+                    "_id": i,
+                    "b": 1,
                 }
             doc["data"] = i % 3
             c.monary_test.data.insert(doc)
@@ -49,14 +48,14 @@ def aggregate_monary_column(colname, coltype, pipeline, **kwargs):
 
 
 def test_group():
-    pipeline = [{"$group" : {"_id" : "$data"}}, {"$sort" : {"_id" : 1}}]
+    pipeline = [{"$group": {"_id": "$data"}}, {"$sort": {"_id": 1}}]
     result = aggregate_monary_column("_id", "int32", pipeline)
     expected = numpy.array([0, 1, 2])
     assert (expected == result).all()
 
 
 def test_project():
-    pipeline = [{"$project" : {"b" : 1, "_id" : 0}}]
+    pipeline = [{"$project": {"b": 1, "_id": 0}}]
     result = aggregate_monary_column("b", "int32", pipeline)
     assert numpy.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
     assert result.sum() == NUM_TEST_RECORDS / 2

@@ -1,22 +1,16 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import nose
 import pymongo
-from pymongo.errors import ConnectionFailure
-from nose import SkipTest
 
 import monary
 
 try:
-    xrange
-except NameError:
-    xrange = range
-
-try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except ConnectionFailure as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except pymongo.errors.ConnectionFailure as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 NUM_TEST_RECORDS = 5000
 BLOCK_SIZE = 32 * 50
@@ -34,9 +28,10 @@ def get_monary_connection():
 def setup():
     global records
     with get_pymongo_connection() as c:
-        c.drop_database("monary_test")  # ensure that database does not exist
+        # Ensure that database does not exist.
+        c.drop_database("monary_test")
         coll = c.monary_test.test_data
-        for i in xrange(NUM_TEST_RECORDS):
+        for i in range(NUM_TEST_RECORDS):
             r = {"_id": i}
             if (i % 2) == 0:
                 r["x"] = 3
