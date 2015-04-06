@@ -95,8 +95,7 @@ class MonaryParam(object):
         return list(map(lambda x: cls(x), groups))
 
     def __len__(self):
-        """Return the length of the masked array.
-        """
+        """Return the length of the masked array."""
         return len(self.array)
 
     def __getitem__(self, key):

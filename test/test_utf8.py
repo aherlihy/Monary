@@ -4,18 +4,17 @@
 
 import sys
 
+import nose
 import pymongo
-from pymongo.errors import ConnectionFailure
-from nose import SkipTest
 
 import monary
 
-try:
-    with pymongo.MongoClient() as c:
-        c.drop_database("monary_test")
-except ConnectionFailure as e:
-    raise SkipTest("Unable to connect to mongod: ", str(e))
 
+try:
+    with pymongo.MongoClient() as cx:
+        cx.drop_database("monary_test")
+except pymongo.errors.ConnectionFailure as ex:
+    raise nose.SkipTest("Unable to connect to mongod: ", str(ex))
 
 expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]
 if sys.version_info[0] < 3:
