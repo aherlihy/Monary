@@ -19,6 +19,12 @@ except ImportError:
     use_setuptools()
     from setuptools import setup
 
+test_requires = []
+test_suite = "test"
+if sys.version_info[:2] == (2, 6):
+    test_requires.append("unittest2")
+    test_suite = "unittest2.collector"
+
 DEBUG = False
 
 VERSION = "0.3.0"
@@ -103,6 +109,7 @@ class BuildCMonary(Command):
                                   os.path.join(CMONGO_SRC, "src", "libbson", ".libs", "libbson-1.0.a")],
                                   "cmonary", "monary", **linker_kw)
 
+
 # Get README info
 try:
     with open("README.rst") as fd:
@@ -114,8 +121,8 @@ setup(
     name = "Monary",
     version = VERSION,
     packages = ["monary"],
-    requires = ["pymongo", "numpy"],
-    
+    setup_requires = ["pymongo", "numpy"],
+    tests_require = test_requires,
     package_dir = {"monary": "monary"},
     package_data = {"monary": [so_target]},
 
@@ -140,6 +147,7 @@ setup(
         "Topic :: Database"
     ],
     url = "http://bitbucket.org/djcbeach/monary/",
+    test_suite = test_suite,
 
     cmdclass = {
         'build_cmongo': BuildCMongoDriver,
