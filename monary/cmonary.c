@@ -33,22 +33,23 @@ enum {
     TYPE_UINT64 = 10,
     TYPE_FLOAT32 = 11,
     TYPE_FLOAT64 = 12,
-    TYPE_DATE = 13,      // BSON date-time, seconds since the UNIX epoch (uint64 storage)
-    TYPE_TIMESTAMP = 14, // BSON timestamp - UNIX timestamp and increment (uint64 storage)
-    TYPE_STRING = 15,    // each record is (type_arg) chars in length
-    TYPE_BINARY = 16,    // each record is (type_arg) bytes in length
-    TYPE_BSON = 17,      // BSON subdocument as binary (each record is type_arg bytes)
-    TYPE_TYPE = 18,      // BSON type code (uint8 storage)
-    TYPE_SIZE = 19,      // data size of a string, symbol, binary, or bson object (uint32)
-    TYPE_LENGTH = 20,    // length of string (character count) or num elements in BSON (uint32)
-    LAST_TYPE = 20       // BSON type code as per the BSON specificaion
+    TYPE_DATE = 13,     // BSON date-time, seconds since the UNIX epoch (uint64 storage)
+    TYPE_TIMESTAMP = 14,        // BSON timestamp - UNIX timestamp and increment (uint64 storage)
+    TYPE_STRING = 15,   // each record is (type_arg) chars in length
+    TYPE_BINARY = 16,   // each record is (type_arg) bytes in length
+    TYPE_BSON = 17,     // BSON subdocument as binary (each record is type_arg bytes)
+    TYPE_TYPE = 18,     // BSON type code (uint8 storage)
+    TYPE_SIZE = 19,     // data size of a string, symbol, binary, or bson object (uint32)
+    TYPE_LENGTH = 20,   // length of string (character count) or num elements in BSON (uint32)
+    LAST_TYPE = 20      // BSON type code as per the BSON specification
 };
-
 
 /**
  * Helper function to set the fields of bson_error_t
  */
-void monary_error(bson_error_t* err, char* message) {
+void
+monary_error(bson_error_t * err, char *message)
+{
     err->code = 0;
     err->domain = 0;
     bson_snprintf(err->message, sizeof(err->message), "%s", message);
@@ -57,10 +58,9 @@ void monary_error(bson_error_t* err, char* message) {
 /**
  * Controls the logging performed by libmongoc.
  */
-void monary_log_func (mongoc_log_level_t log_level,
-                      const char* log_domain,
-                      const char* message,
-                      void* user_data)
+void
+monary_log_func(mongoc_log_level_t log_level,
+                const char *log_domain, const char *message, void *user_data)
 {
     return;
 }
@@ -68,7 +68,9 @@ void monary_log_func (mongoc_log_level_t log_level,
 /**
  * Initialize libmongoc.
  */
-void monary_init(void) {
+void
+monary_init(void)
+{
     mongoc_init();
 #ifdef NDEBUG
     mongoc_log_set_handler(monary_log_func, NULL);
@@ -79,7 +81,9 @@ void monary_init(void) {
 /**
  * Releases resources used by libmongoc.
  */
-void monary_cleanup(void) {
+void
+monary_cleanup(void)
+{
     mongoc_cleanup();
     DEBUG("%s", "monary module cleaned up");
 }
@@ -93,13 +97,15 @@ void monary_cleanup(void) {
  * @return A pointer to a mongoc_client_t, or NULL if the connection attempt
  * was unsuccessful.
  */
-mongoc_client_t* monary_connect(const char* uri, const char* pem_file,
-                                const char* pem_pwd, const char* ca_file,
-                                const char* ca_dir, const char* crl_file,
-                                bool weak_cert_validation,
-                                bson_error_t* err) {
-    
-    mongoc_client_t* client;
+mongoc_client_t *
+monary_connect(const char *uri, const char *pem_file,
+               const char *pem_pwd, const char *ca_file,
+               const char *ca_dir, const char *crl_file,
+               bool weak_cert_validation, bson_error_t * err)
+{
+
+    mongoc_client_t *client;
+
     if (!uri) {
         monary_error(err, "empty URI passed to monary_connect");
         return NULL;
@@ -112,13 +118,16 @@ mongoc_client_t* monary_connect(const char* uri, const char* pem_file,
         return NULL;
     }
     DEBUG("%s", "Connection successful");
-    mongoc_uri_t* mongo_uri = mongoc_uri_new(uri);
-    if( mongoc_uri_get_ssl(mongo_uri) ) {
+    mongoc_uri_t *mongo_uri = mongoc_uri_new(uri);
+
+    if (mongoc_uri_get_ssl(mongo_uri)) {
         mongoc_ssl_opt_t opts = { pem_file, pem_pwd, ca_file, ca_dir, crl_file,
-                                  weak_cert_validation };
+            weak_cert_validation
+        };
         mongoc_client_set_ssl_opts(client, &opts);
         DEBUG("Setting SSL opts={%s, %s, %s, %s, %s, %i} \n",
-              pem_file, pem_pwd, ca_file, ca_dir, crl_file, weak_cert_validation);
+              pem_file, pem_pwd, ca_file, ca_dir, crl_file,
+              weak_cert_validation);
     }
     mongoc_uri_destroy(mongo_uri);
     return client;
@@ -127,7 +136,8 @@ mongoc_client_t* monary_connect(const char* uri, const char* pem_file,
 /**
  * Destroys all resources associated with the client.
  */
-void monary_disconnect(mongoc_client_t* client)
+void
+monary_disconnect(mongoc_client_t * client)
 {
     DEBUG("%s", "Closing mongoc_client");
     mongoc_client_destroy(client);
@@ -144,9 +154,9 @@ void monary_disconnect(mongoc_client_t* client)
  * @return If successful, a mongoc_collection_t that can be queried against
  * with mongoc_collection_find(3).
  */
-mongoc_collection_t* monary_use_collection(mongoc_client_t* client,
-                                           const char* db,
-                                           const char* collection)
+mongoc_collection_t *
+monary_use_collection(mongoc_client_t * client,
+                      const char *db, const char *collection)
 {
     return mongoc_client_get_collection(client, db, collection);
 }
@@ -156,7 +166,8 @@ mongoc_collection_t* monary_use_collection(mongoc_client_t* client,
  *
  * @param collection The collection to destroy.
  */
-void monary_destroy_collection(mongoc_collection_t* collection)
+void
+monary_destroy_collection(mongoc_collection_t * collection)
 {
     if (collection) {
         DEBUG("%s", "Closing mongoc_collection");
@@ -178,13 +189,12 @@ void monary_destroy_collection(mongoc_collection_t* collection)
  * storage array. A value is masked if and only if an error occurs while
  * loading memory from MongoDB.
  */
-typedef struct monary_column_item
-{
-    char* field;
+typedef struct monary_column_item {
+    char *field;
     unsigned int type;
     unsigned int type_arg;
-    void* storage;
-    unsigned char* mask;
+    void *storage;
+    unsigned char *mask;
 } monary_column_item;
 
 /**
@@ -195,19 +205,18 @@ typedef struct monary_column_item
  * monary_column_item.storage contains num_rows elements.)
  * @memb columns A pointer to the first array.
  */
-typedef struct monary_column_data
-{
+typedef struct monary_column_data {
     unsigned int num_columns;
     unsigned int num_rows;
-    monary_column_item* columns;
+    monary_column_item *columns;
 } monary_column_data;
 
 /**
  * A MongoDB cursor augmented with Monary column data.
  */
 typedef struct monary_cursor {
-    mongoc_cursor_t* mcursor;
-    monary_column_data* coldata;
+    mongoc_cursor_t *mcursor;
+    monary_column_data *coldata;
 } monary_cursor;
 
 /**
@@ -220,15 +229,19 @@ typedef struct monary_cursor {
  *
  * @return A pointer to the newly-allocated column data.
  */
-monary_column_data* monary_alloc_column_data(unsigned int num_columns,
-                                             unsigned int num_rows)
+monary_column_data *
+monary_alloc_column_data(unsigned int num_columns, unsigned int num_rows)
 {
-    monary_column_data* result;
-    monary_column_item* columns;
+    monary_column_data *result;
 
-    if(num_columns > MONARY_MAX_NUM_COLUMNS) { return NULL; }
-    result = (monary_column_data*) malloc(sizeof(monary_column_data));
-    columns = (monary_column_item*) calloc(num_columns, sizeof(monary_column_item));
+    monary_column_item *columns;
+
+    if (num_columns > MONARY_MAX_NUM_COLUMNS) {
+        return NULL;
+    }
+    result = (monary_column_data *) malloc(sizeof(monary_column_data));
+    columns =
+        (monary_column_item *) calloc(num_columns, sizeof(monary_column_item));
 
     DEBUG("%s", "Column data allocated");
 
@@ -239,16 +252,22 @@ monary_column_data* monary_alloc_column_data(unsigned int num_columns,
     return result;
 }
 
-int monary_free_column_data(monary_column_data* coldata)
+int
+monary_free_column_data(monary_column_data * coldata)
 {
     int i;
-    monary_column_item* col;
 
-    if(coldata == NULL || coldata->columns == NULL) { return 0; }
+    monary_column_item *col;
 
-    for(i = 0; i < coldata->num_columns; i++) {
+    if (coldata == NULL || coldata->columns == NULL) {
+        return 0;
+    }
+
+    for (i = 0; i < coldata->num_columns; i++) {
         col = coldata->columns + i;
-        if(col->field != NULL) { free(col->field); }
+        if (col->field != NULL) {
+            free(col->field);
+        }
     }
     free(coldata->columns);
     free(coldata);
@@ -277,56 +296,56 @@ int monary_free_column_data(monary_column_data* coldata)
  *
  * @return 1 if the modification was performed successfully; -1 otherwise.
  */
-int monary_set_column_item(monary_column_data* coldata,
-                           unsigned int colnum,
-                           const char* field,
-                           unsigned int type,
-                           unsigned int type_arg,
-                           void* storage,
-                           unsigned char* mask,
-                           bson_error_t* err)
+int
+monary_set_column_item(monary_column_data * coldata,
+                       unsigned int colnum,
+                       const char *field,
+                       unsigned int type,
+                       unsigned int type_arg,
+                       void *storage, unsigned char *mask, bson_error_t * err)
 {
     int len;
-    monary_column_item* col;
 
-    if(coldata == NULL) {
+    monary_column_item *col;
+
+    if (coldata == NULL) {
         monary_error(err, "null argument passed to monary_set_column_item: "
                      "coldata");
         return -1;
     }
-    if(colnum >= coldata->num_columns) {
+    if (colnum >= coldata->num_columns) {
         monary_error(err, "colnum exceeded number of columns in "
                      "monary_set_column_item");
         return -1;
     }
-    if(type == TYPE_UNDEFINED || type > LAST_TYPE) {
+    if (type == TYPE_UNDEFINED || type > LAST_TYPE) {
         monary_error(err, "column type passed to monary_set_column_item was "
                      "undefined");
         return -1;
     }
-    if(storage == NULL) {
+    if (storage == NULL) {
         monary_error(err, "null argument passed to monary_set_column_item: "
-                    "storage");
+                     "storage");
         return -1;
     }
-    if(mask == NULL) {
+    if (mask == NULL) {
         monary_error(err, "null argument passed to monary_set_column_item: "
                      "mask");
         return -1;
     }
-    
+
     len = strlen(field);
-    if(len > MONARY_MAX_STRING_LENGTH) {
+    if (len > MONARY_MAX_STRING_LENGTH) {
         monary_error(err, "field name length exceeded maximum in "
                      "monary_set_column_item");
         return -1;
     }
-    
+
     col = coldata->columns + colnum;
 
     col->field = malloc(len + 1);
     strcpy(col->field, field);
-    
+
     col->type = type;
     col->type_arg = type_arg;
     col->storage = storage;
@@ -335,34 +354,35 @@ int monary_set_column_item(monary_column_data* coldata,
     return 1;
 }
 
-int monary_load_objectid_value(const bson_iter_t* bsonit,
-                               monary_column_item* citem,
-                               int idx)
+int
+monary_load_objectid_value(const bson_iter_t * bsonit,
+                           monary_column_item * citem, int idx)
 {
-    const bson_oid_t* oid;
-    uint8_t* dest;
+    const bson_oid_t *oid;
+
+    uint8_t *dest;
 
     if (BSON_ITER_HOLDS_OID(bsonit)) {
         oid = bson_iter_oid(bsonit);
-        dest = ((uint8_t*) citem->storage) + (idx * sizeof(bson_oid_t));
+        dest = ((uint8_t *) citem->storage) + (idx * sizeof(bson_oid_t));
         memcpy(dest, oid->bytes, sizeof(bson_oid_t));
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_bool_value(const bson_iter_t* bsonit,
-                           monary_column_item* citem,
-                           int idx)
+int
+monary_load_bool_value(const bson_iter_t * bsonit,
+                       monary_column_item * citem, int idx)
 {
     bool value;
 
     value = bson_iter_bool(bsonit);
-    memcpy(((bool*) citem->storage) + idx, &value, sizeof(bool));
+    memcpy(((bool *) citem->storage) + idx, &value, sizeof(bool));
     return 1;
 }
-
 
 #define MONARY_DEFINE_FLOAT_LOADER(FUNCNAME, NUMTYPE)                        \
 int FUNCNAME (const bson_iter_t* bsonit,                                     \
@@ -413,61 +433,65 @@ int FUNCNAME (const bson_iter_t* bsonit,                                     \
         return 0;                                                            \
     }                                                                        \
 }
-
 // Signed integers
 MONARY_DEFINE_INT_LOADER(monary_load_int8_value, int8_t)
 MONARY_DEFINE_INT_LOADER(monary_load_int16_value, int16_t)
 MONARY_DEFINE_INT_LOADER(monary_load_int32_value, int32_t)
 MONARY_DEFINE_INT_LOADER(monary_load_int64_value, int64_t)
-
 // Unsigned integers
 MONARY_DEFINE_INT_LOADER(monary_load_uint8_value, uint8_t)
 MONARY_DEFINE_INT_LOADER(monary_load_uint16_value, uint16_t)
 MONARY_DEFINE_INT_LOADER(monary_load_uint32_value, uint32_t)
 MONARY_DEFINE_INT_LOADER(monary_load_uint64_value, uint64_t)
 
-int monary_load_datetime_value(const bson_iter_t* bsonit,
-                               monary_column_item* citem,
-                               int idx)
+int monary_load_datetime_value(const bson_iter_t * bsonit,
+                                    monary_column_item * citem, int idx)
 {
     int64_t value;
 
     if (BSON_ITER_HOLDS_DATE_TIME(bsonit)) {
         value = bson_iter_date_time(bsonit);
-        memcpy(((int64_t*) citem->storage) + idx, &value, sizeof(int64_t));
+        memcpy(((int64_t *) citem->storage) + idx, &value, sizeof(int64_t));
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_timestamp_value(const bson_iter_t* bsonit,
-                                monary_column_item* citem,
-                                int idx)
+int
+monary_load_timestamp_value(const bson_iter_t * bsonit,
+                            monary_column_item * citem, int idx)
 {
     uint32_t timestamp;
-    uint32_t increment;
-    char* dest;         // Would be void*, but Windows compilers complain
 
-    dest = (char*) citem->storage + idx*sizeof(int64_t);
+    uint32_t increment;
+
+    char *dest;                 // Would be void*, but Windows compilers complain
+
+    dest = (char *)citem->storage + idx * sizeof(int64_t);
     if (BSON_ITER_HOLDS_TIMESTAMP(bsonit)) {
         bson_iter_timestamp(bsonit, &timestamp, &increment);
         memcpy(dest, &timestamp, sizeof(int32_t));
         memcpy(dest + sizeof(int32_t), &increment, sizeof(int32_t));
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_string_value(const bson_iter_t* bsonit,
-                             monary_column_item* citem,
-                             int idx)
+int
+monary_load_string_value(const bson_iter_t * bsonit,
+                         monary_column_item * citem, int idx)
 {
-    char* dest;         // Pointer to the final location of the array in mem
-    const char* src;    // Pointer to immutable buffer
+    char *dest;                 // Pointer to the final location of the array in mem
+
+    const char *src;            // Pointer to immutable buffer
+
     int size;
-    uint32_t stringlen; // The size of the string according to iter_utf8
+
+    uint32_t stringlen;         // The size of the string according to iter_utf8
 
     if (BSON_ITER_HOLDS_UTF8(bsonit)) {
         src = bson_iter_utf8(bsonit, &stringlen);
@@ -475,24 +499,29 @@ int monary_load_string_value(const bson_iter_t* bsonit,
         if (stringlen > size) {
             stringlen = size;
         }
-        dest = ((char*) citem->storage) + (idx * size);
+        dest = ((char *)citem->storage) + (idx * size);
         // Note: numpy strings need not end in \0
         memcpy(dest, src, stringlen);
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_binary_value(const bson_iter_t* bsonit,
-                             monary_column_item* citem,
-                             int idx)
+int
+monary_load_binary_value(const bson_iter_t * bsonit,
+                         monary_column_item * citem, int idx)
 {
     bson_subtype_t subtype;
-    const uint8_t* binary;
+
+    const uint8_t *binary;
+
     int size;
+
     uint32_t binary_len;
-    uint8_t* dest;
+
+    uint8_t *dest;
 
     if (BSON_ITER_HOLDS_BINARY(bsonit)) {
         // Load the binary
@@ -500,25 +529,28 @@ int monary_load_binary_value(const bson_iter_t* bsonit,
 
         // Size checking
         size = citem->type_arg;
-        if(binary_len > size) {
+        if (binary_len > size) {
             binary_len = size;
         }
 
-        dest = ((uint8_t*) citem->storage) + (idx * size);
+        dest = ((uint8_t *) citem->storage) + (idx * size);
         memcpy(dest, binary, binary_len);
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_document_value(const bson_iter_t* bsonit,
-                               monary_column_item* citem,
-                               int idx)
+int
+monary_load_document_value(const bson_iter_t * bsonit,
+                           monary_column_item * citem, int idx)
 {
     uint32_t document_len;      // The length of document in bytes.
-    const uint8_t* document;    // Pointer to the immutable document buffer.
-    uint8_t* dest;
+
+    const uint8_t *document;    // Pointer to the immutable document buffer.
+
+    uint8_t *dest;
 
     if (BSON_ITER_HOLDS_DOCUMENT(bsonit)) {
         bson_iter_document(bsonit, &document_len, &document);
@@ -526,91 +558,102 @@ int monary_load_document_value(const bson_iter_t* bsonit,
             document_len = citem->type_arg;
         }
 
-        dest = ((uint8_t*) citem->storage) + (idx * document_len);
+        dest = ((uint8_t *) citem->storage) + (idx * document_len);
         memcpy(dest, document, document_len);
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-int monary_load_type_value(const bson_iter_t* bsonit,
-                           monary_column_item* citem,
-                           int idx) {
+int
+monary_load_type_value(const bson_iter_t * bsonit,
+                       monary_column_item * citem, int idx)
+{
     uint8_t type;
-    uint8_t* dest;
+
+    uint8_t *dest;
+
     type = (uint8_t) bson_iter_type(bsonit);
-    dest = ((uint8_t*) citem->storage) + idx;
+    dest = ((uint8_t *) citem->storage) + idx;
     memcpy(dest, &type, sizeof(uint8_t));
     return 1;
 }
 
-int monary_load_size_value(const bson_iter_t* bsonit,
-                           monary_column_item* citem,
-                           int idx)
+int
+monary_load_size_value(const bson_iter_t * bsonit,
+                       monary_column_item * citem, int idx)
 {
     bson_type_t type;
-    const uint8_t* discard;
+
+    const uint8_t *discard;
+
     uint32_t size;
-    uint32_t* dest;
+
+    uint32_t *dest;
 
     type = bson_iter_type(bsonit);
     switch (type) {
-        case BSON_TYPE_UTF8:
-        case BSON_TYPE_CODE:
-            bson_iter_utf8(bsonit, &size);
-            break;
-        case BSON_TYPE_BINARY:
-            bson_iter_binary(bsonit, NULL, &size, &discard);
-            break;
-        case BSON_TYPE_DOCUMENT:
-            bson_iter_document(bsonit, &size, &discard);
-            break;
-        case BSON_TYPE_ARRAY:
-            bson_iter_array(bsonit, &size, &discard);
-            break;
-        default:
-            return 0;
+    case BSON_TYPE_UTF8:
+    case BSON_TYPE_CODE:
+        bson_iter_utf8(bsonit, &size);
+        break;
+    case BSON_TYPE_BINARY:
+        bson_iter_binary(bsonit, NULL, &size, &discard);
+        break;
+    case BSON_TYPE_DOCUMENT:
+        bson_iter_document(bsonit, &size, &discard);
+        break;
+    case BSON_TYPE_ARRAY:
+        bson_iter_array(bsonit, &size, &discard);
+        break;
+    default:
+        return 0;
     }
-    dest = ((uint32_t*) citem->storage) + idx;
+    dest = ((uint32_t *) citem->storage) + idx;
     memcpy(dest, &size, sizeof(uint32_t));
     return 1;
 }
 
-int monary_load_length_value(const bson_iter_t* bsonit,
-                             monary_column_item* citem,
-                             int idx)
+int
+monary_load_length_value(const bson_iter_t * bsonit,
+                         monary_column_item * citem, int idx)
 {
     bson_type_t type;
+
     bson_iter_t child;
-    const char* discard;
+
+    const char *discard;
+
     uint32_t length;
-    uint32_t* dest;
+
+    uint32_t *dest;
 
     type = bson_iter_type(bsonit);
     switch (type) {
-        case BSON_TYPE_UTF8:
-        case BSON_TYPE_CODE:
-            discard = bson_iter_utf8(bsonit, &length);
-            for (length = 0; *discard; length++) {
-                discard = bson_utf8_next_char(discard);
-            }
-            break;
-        case BSON_TYPE_ARRAY:
-        case BSON_TYPE_DOCUMENT:
-            if (!bson_iter_recurse(bsonit, &child)) {
-                return 0;
-            }
-            for (length = 0; bson_iter_next(&child); length++);
-            break;
-        case BSON_TYPE_BINARY:
-            bson_iter_binary(bsonit, NULL, &length, (const uint8_t**) &discard);
-            break;
-        default:
+    case BSON_TYPE_UTF8:
+    case BSON_TYPE_CODE:
+        discard = bson_iter_utf8(bsonit, &length);
+        for (length = 0; *discard; length++) {
+            discard = bson_utf8_next_char(discard);
+        }
+        break;
+    case BSON_TYPE_ARRAY:
+    case BSON_TYPE_DOCUMENT:
+        if (!bson_iter_recurse(bsonit, &child)) {
             return 0;
+        }
+        for (length = 0; bson_iter_next(&child); length++);
+        break;
+    case BSON_TYPE_BINARY:
+        bson_iter_binary(bsonit, NULL, &length, (const uint8_t **)&discard);
+        break;
+    default:
+        return 0;
     }
 
-    dest = ((uint32_t*) citem->storage) + idx;
+    dest = ((uint32_t *) citem->storage) + idx;
     memcpy(dest, &length, sizeof(uint32_t));
     return 1;
 }
@@ -620,13 +663,13 @@ case TYPENAME:                                      \
 success = TYPEFUNC(bsonit, citem, offset);          \
 break;
 
-int monary_load_item(const bson_iter_t* bsonit,
-                     monary_column_item* citem,
-                     int offset)
+int
+monary_load_item(const bson_iter_t * bsonit,
+                 monary_column_item * citem, int offset)
 {
     int success = 0;
 
-    switch(citem->type) {
+    switch (citem->type) {
         MONARY_DISPATCH_TYPE(TYPE_OBJECTID, monary_load_objectid_value)
         MONARY_DISPATCH_TYPE(TYPE_DATE, monary_load_datetime_value)
         MONARY_DISPATCH_TYPE(TYPE_TIMESTAMP, monary_load_timestamp_value)
@@ -652,9 +695,9 @@ int monary_load_item(const bson_iter_t* bsonit,
         MONARY_DISPATCH_TYPE(TYPE_SIZE, monary_load_size_value)
         MONARY_DISPATCH_TYPE(TYPE_LENGTH, monary_load_length_value)
         MONARY_DISPATCH_TYPE(TYPE_TYPE, monary_load_type_value)
-        default:
-            DEBUG("%s does not match any Monary type", citem->field);
-            break;
+    default:
+        DEBUG("%s does not match any Monary type", citem->field);
+        break;
     }
 
     return success;
@@ -674,24 +717,31 @@ int monary_load_item(const bson_iter_t* bsonit,
  *
  * @return The number of unsuccessful loads.
  */
-int monary_bson_to_arrays(monary_column_data* coldata,
-                          unsigned int row,
-                          const bson_t* bson_data)
+int
+monary_bson_to_arrays(monary_column_data * coldata,
+                      unsigned int row, const bson_t * bson_data)
 {
     bson_iter_t bsonit;
+
     bson_iter_t descendant;
+
     int i;
+
     int masked;
+
     int success;
-    monary_column_item* citem;
+
+    monary_column_item *citem;
 
     if (!coldata || !bson_data) {
-        DEBUG("%s", "Array pointer or BSON data was NULL and could not be loaded.");
+        DEBUG("%s",
+              "Array pointer or BSON data was NULL and could not be loaded.");
         return -1;
     }
     if (row > coldata->num_rows) {
-        DEBUG("Tried to load row %d, but that exceeds the maximum # of rows (%d) ",
-              row, coldata->num_rows);
+        DEBUG
+            ("Tried to load row %d, but that exceeds the maximum # of rows (%d) ",
+             row, coldata->num_rows);
         return -1;
     }
 
@@ -728,34 +778,30 @@ int monary_bson_to_arrays(monary_column_data* coldata,
  * @return If unsuccessful, returns -1; otherwise, returns the number of
  * documents counted.
  */
-int64_t monary_query_count(mongoc_collection_t* collection,
-                           const uint8_t* query,
-                           bson_error_t* err)
+int64_t
+monary_query_count(mongoc_collection_t * collection,
+                   const uint8_t * query, bson_error_t * err)
 {
-    bson_t query_bson;      // The query converted to BSON format
-    int64_t total_count;    // The number of documents counted
-    uint32_t query_size;    // Length of the query in bytes
+    bson_t query_bson;          // The query converted to BSON format
+
+    int64_t total_count;        // The number of documents counted
+
+    uint32_t query_size;        // Length of the query in bytes
 
     DEBUG("%s", "Starting Monary count");
 
     // build BSON query data
     memcpy(&query_size, query, sizeof(uint32_t));
-    if (!bson_init_static(&query_bson,
-                          query,
-                          query_size)) {
+    if (!bson_init_static(&query_bson, query, query_size)) {
         monary_error(err, "failed to initialize raw BSON query in"
                      "monary_query_count");
         return -1;
     }
-    
+
     // Make the count query
     total_count = mongoc_collection_count(collection,
                                           MONGOC_QUERY_NONE,
-                                          &query_bson,
-                                          0,
-                                          0,
-                                          NULL,
-                                          err);
+                                          &query_bson, 0, 0, NULL, err);
     bson_destroy(&query_bson);
     if (total_count < 0) {
         DEBUG("error: %d.%d %s", err->domain, err->code, err->message);
@@ -775,11 +821,12 @@ int64_t monary_query_count(mongoc_collection_t* collection,
  * After this BSON is written to, it may be used in a query and then destroyed
  * afterwards.
  */
-void monary_get_bson_fields_list(monary_column_data* coldata,
-                                 bson_t* fields_bson)
+void
+monary_get_bson_fields_list(monary_column_data * coldata, bson_t * fields_bson)
 {
     int i;
-    monary_column_item* col;
+
+    monary_column_item *col;
 
     // We want to select exactly each field specified in coldata, of which
     // there are exactly coldata.num_columns
@@ -807,19 +854,23 @@ void monary_get_bson_fields_list(monary_column_data* coldata,
  * monary_close_query() when no longer in use. If unsuccessful, or if an
  * invalid query was passed in, NULL is returned.
  */
-monary_cursor* monary_init_query(mongoc_collection_t* collection,
-                                 uint32_t offset,
-                                 uint32_t limit,
-                                 const uint8_t* query,
-                                 monary_column_data* coldata,
-                                 int select_fields,
-                                 bson_error_t* err)
+monary_cursor *
+monary_init_query(mongoc_collection_t * collection,
+                  uint32_t offset,
+                  uint32_t limit,
+                  const uint8_t * query,
+                  monary_column_data * coldata,
+                  int select_fields, bson_error_t * err)
 {
     bson_t query_bson;          // BSON representing the query to perform
-    bson_t* fields_bson;        // BSON holding the fields to select
+
+    bson_t *fields_bson;        // BSON holding the fields to select
+
     int32_t query_size;
-    monary_cursor* cursor;
-    mongoc_cursor_t* mcursor;   // A MongoDB cursor
+
+    monary_cursor *cursor;
+
+    mongoc_cursor_t *mcursor;   // A MongoDB cursor
 
     // Sanity checks
     if (!collection || !query || !coldata) {
@@ -830,21 +881,19 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     // build BSON query data
     memcpy(&query_size, query, sizeof(int32_t));
     query_size = (int32_t) BSON_UINT32_FROM_LE(query_size);
-    if (!bson_init_static(&query_bson,
-                          query,
-                          query_size)) {
+    if (!bson_init_static(&query_bson, query, query_size)) {
         monary_error(err, "failed to initialize raw bson query in "
                      "monary_init_query");
         return NULL;
     }
     fields_bson = NULL;
 
-
     // build BSON fields list (if necessary)
-    if(select_fields) {
+    if (select_fields) {
         fields_bson = bson_new();
         if (!fields_bson) {
-            monary_error(err, "error occurred while allocating memory for BSON "
+            monary_error(err,
+                         "error occurred while allocating memory for BSON "
                          "data in monary_init_query");
             return NULL;
         }
@@ -855,15 +904,13 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     mcursor = mongoc_collection_find(collection,
                                      MONGOC_QUERY_NONE,
                                      offset,
-                                     limit,
-                                     0,
-                                     &query_bson,
-                                     fields_bson,
-                                     NULL);
+                                     limit, 0, &query_bson, fields_bson, NULL);
 
     // destroy BSON fields
     bson_destroy(&query_bson);
-    if(fields_bson) { bson_destroy(fields_bson); }
+    if (fields_bson) {
+        bson_destroy(fields_bson);
+    }
 
     if (!mcursor) {
         monary_error(err, "error occurred within mongoc_collection_find in "
@@ -872,7 +919,7 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
     }
 
     // finally, create a new Monary cursor
-    cursor = (monary_cursor*) malloc(sizeof(monary_cursor));
+    cursor = (monary_cursor *) malloc(sizeof(monary_cursor));
     cursor->mcursor = mcursor;
     cursor->coldata = coldata;
     return cursor;
@@ -890,19 +937,23 @@ monary_cursor* monary_init_query(mongoc_collection_t* collection,
  * monary_close_query() when no longer in use. If unsuccessful, or if an invalid
  * pipeline was passed in, NULL is returned.
  */
-monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
-                                     const uint8_t* pipeline,
-                                     monary_column_data* coldata,
-                                     bson_error_t* err)
+monary_cursor *
+monary_init_aggregate(mongoc_collection_t * collection,
+                      const uint8_t * pipeline,
+                      monary_column_data * coldata, bson_error_t * err)
 {
     bson_t pl_bson;
+
     int32_t pl_size;
-    mongoc_cursor_t* mcursor;
-    monary_cursor* cursor;
+
+    mongoc_cursor_t *mcursor;
+
+    monary_cursor *cursor;
 
     // Sanity checks
     if (!collection) {
-        monary_error(err, "invalid collection passed to monary_init_aggregate");
+        monary_error(err,
+                     "invalid collection passed to monary_init_aggregate");
         return NULL;
     }
     else if (!pipeline) {
@@ -913,9 +964,7 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
     // Build BSON pipeline
     memcpy(&pl_size, pipeline, sizeof(int32_t));
     pl_size = (int32_t) BSON_UINT32_FROM_LE(pl_size);
-    if (!bson_init_static(&pl_bson,
-                          pipeline,
-                          pl_size)) {
+    if (!bson_init_static(&pl_bson, pipeline, pl_size)) {
         monary_error(err, "failed to initialize raw BSON pipeline in "
                      "monary_init_aggregate");
         return NULL;
@@ -924,9 +973,7 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
     // Get an aggregation cursor
     mcursor = mongoc_collection_aggregate(collection,
                                           MONGOC_QUERY_NONE,
-                                          &pl_bson,
-                                          NULL,
-                                          NULL);
+                                          &pl_bson, NULL, NULL);
 
     // Clean up
     bson_destroy(&pl_bson);
@@ -937,7 +984,7 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
         return NULL;
     }
 
-    cursor = (monary_cursor*) malloc(sizeof(monary_cursor));
+    cursor = (monary_cursor *) malloc(sizeof(monary_cursor));
     cursor->mcursor = mcursor;
     cursor->coldata = coldata;
     return cursor;
@@ -953,27 +1000,32 @@ monary_cursor* monary_init_aggregate(mongoc_collection_t* collection,
  *
  * @return The number of rows loaded into memory.
  */
-int monary_load_query(monary_cursor* cursor, bson_error_t* err)
+int
+monary_load_query(monary_cursor * cursor, bson_error_t * err)
 {
-    const bson_t* bson;             // Pointer to an immutable BSON buffer
+    const bson_t *bson;         // Pointer to an immutable BSON buffer
+
     int num_masked;
+
     int row;
+
     int total_values;
-    monary_column_data* coldata;
-    mongoc_cursor_t* mcursor;
+
+    monary_column_data *coldata;
+
+    mongoc_cursor_t *mcursor;
 
     mcursor = cursor->mcursor;  // The underlying MongoDB cursor
     coldata = cursor->coldata;  // A pointer to the NumPy array data
-    row = 0;                    // Iterator var over the lengths of the arrays
-    num_masked = 0;             // The number of failed loads
-    
+    row = 0;            // Iterator var over the lengths of the arrays
+    num_masked = 0;     // The number of failed loads
+
     // read result values
-    while(row < coldata->num_rows
-            && !mongoc_cursor_error(mcursor, err)
-            && mongoc_cursor_next(mcursor, &bson)) {
+    while (row < coldata->num_rows && !mongoc_cursor_error(mcursor, err)
+           && mongoc_cursor_next(mcursor, &bson)) {
 
 #ifndef NDEBUG
-        if(row % 500000 == 0) {
+        if (row % 500000 == 0) {
             DEBUG("...%i rows loaded", row);
         }
 #endif
@@ -987,7 +1039,8 @@ int monary_load_query(monary_cursor* cursor, bson_error_t* err)
     }
 
     total_values = row * coldata->num_columns;
-    DEBUG("%i rows loaded; %i / %i values were masked", row, num_masked, total_values);
+    DEBUG("%i rows loaded; %i / %i values were masked", row, num_masked,
+          total_values);
 
     return row;
 }
@@ -1001,7 +1054,8 @@ int monary_load_query(monary_cursor* cursor, bson_error_t* err)
  * @param cursor A pointer to the Monary cursor to close. If cursor is NULL,
  * no operation is performed.
  */
-void monary_close_query(monary_cursor* cursor)
+void
+monary_close_query(monary_cursor * cursor)
 {
     if (cursor) {
         DEBUG("%s", "Closing query");
@@ -1026,13 +1080,13 @@ void monary_close_query(monary_cursor* cursor)
  *
  * @return The newly created write concern.
  */
-mongoc_write_concern_t* monary_create_write_concern(int write_concern_w,
-                                                    int write_concern_wtimeout,
-                                                    bool write_concern_journal,
-                                                    bool write_concern_fsync,
-                                                    char* write_concern_wtag)
+mongoc_write_concern_t *
+monary_create_write_concern(int write_concern_w,
+                            int write_concern_wtimeout,
+                            bool write_concern_journal,
+                            bool write_concern_fsync, char *write_concern_wtag)
 {
-    mongoc_write_concern_t* write_concern = mongoc_write_concern_new();
+    mongoc_write_concern_t *write_concern = mongoc_write_concern_new();
 
     mongoc_write_concern_set_w(write_concern, write_concern_w);
     mongoc_write_concern_set_wtimeout(write_concern, write_concern_wtimeout);
@@ -1046,16 +1100,15 @@ mongoc_write_concern_t* monary_create_write_concern(int write_concern_w,
 }
 
 /**
- * Destoys the write concern, freeing the data.
+ * Destroys the write concern, freeing the data.
  *
  * @param write_concern The write concern to be destroyed.
  */
-void monary_destroy_write_concern(mongoc_write_concern_t* write_concern)
+void
+monary_destroy_write_concern(mongoc_write_concern_t * write_concern)
 {
     mongoc_write_concern_destroy(write_concern);
 }
-
-
 
 #define MONARY_SET_BSON_VALUE(TYPENAME, BTYPENAME, VKEY, STORED_TYPE, CAST_TYPE) \
 case TYPENAME:                                                                   \
@@ -1070,13 +1123,16 @@ break;
  * @param citem The monary column that contains the value to use
  * @param idx The index of the storage to use.
  */
-void monary_make_bson_value_t(bson_value_t* val,
-                              monary_column_item* citem,
-                              int idx)
+void
+monary_make_bson_value_t(bson_value_t * val,
+                         monary_column_item * citem, int idx)
 {
     uint32_t len;
-    uint8_t* storage = ((uint8_t*) citem->storage);
-    uint8_t* current_val = storage + (idx * citem->type_arg);
+
+    uint8_t *storage = ((uint8_t *) citem->storage);
+
+    uint8_t *current_val = storage + (idx * citem->type_arg);
+
     val->padding = 0;
     switch (citem->type) {
         MONARY_SET_BSON_VALUE(TYPE_BOOL, BSON_TYPE_BOOL, v_bool, bool, bool)
@@ -1098,54 +1154,55 @@ void monary_make_bson_value_t(bson_value_t* val,
                               v_int64, uint64_t, int64_t)
         MONARY_SET_BSON_VALUE(TYPE_FLOAT32, BSON_TYPE_DOUBLE,
                               v_double, float, double)
+
         MONARY_SET_BSON_VALUE(TYPE_FLOAT64, BSON_TYPE_DOUBLE,
                               v_double, double, double)
+
         MONARY_SET_BSON_VALUE(TYPE_DATE, BSON_TYPE_DATE_TIME,
                               v_datetime, int64_t, int64_t)
-        case TYPE_OBJECTID:
-            val->value_type = BSON_TYPE_OID;
-            bson_oid_init_from_data(&(val->value.v_oid),
-                                    storage + (idx * sizeof(bson_oid_t)));
+        case TYPE_OBJECTID:val->value_type = BSON_TYPE_OID;
+
+        bson_oid_init_from_data(&(val->value.v_oid),
+                                storage + (idx * sizeof(bson_oid_t)));
+        break;
+    case TYPE_TIMESTAMP:
+        val->value_type = BSON_TYPE_TIMESTAMP;
+        memcpy(&val->value.v_timestamp.timestamp,
+               ((uint32_t *) citem->storage) + (2 * idx), sizeof(uint32_t));
+        memcpy(&val->value.v_timestamp.increment,
+               ((uint32_t *) citem->storage) + (2 * idx + 1),
+               sizeof(uint32_t));
+        break;
+    case TYPE_STRING:
+        val->value_type = BSON_TYPE_UTF8;
+        val->value.v_utf8.len = citem->type_arg;
+        val->value.v_utf8.str = (char *)current_val;
+        break;
+    case TYPE_BINARY:
+        val->value_type = BSON_TYPE_BINARY;
+        val->value.v_binary.subtype = BSON_SUBTYPE_BINARY;
+        val->value.v_binary.data_len = citem->type_arg;
+        val->value.v_binary.data = current_val;
+        break;
+    case TYPE_BSON:
+        // The first 4 bytes of the bson is the length.
+        len = BSON_UINT32_FROM_LE(*(uint32_t *) current_val);
+        if (len > citem->type_arg) {
+            DEBUG("Error: bson length greater than array width in "
+                  "row %d", idx);
             break;
-        case TYPE_TIMESTAMP:
-            val->value_type = BSON_TYPE_TIMESTAMP;
-            memcpy(&val->value.v_timestamp.timestamp,
-                   ((uint32_t*) citem->storage) + (2 * idx),
-                   sizeof(uint32_t));
-            memcpy(&val->value.v_timestamp.increment,
-                   ((uint32_t*) citem->storage) + (2 * idx + 1),
-                   sizeof(uint32_t));
+        }
+        if (len < 5) {
+            DEBUG("Error: poorly formatted bson in row %d", idx);
             break;
-        case TYPE_STRING:
-            val->value_type = BSON_TYPE_UTF8;
-            val->value.v_utf8.len = citem->type_arg;
-            val->value.v_utf8.str = (char*)current_val;
-            break;
-        case TYPE_BINARY:
-            val->value_type = BSON_TYPE_BINARY;
-            val->value.v_binary.subtype = BSON_SUBTYPE_BINARY;
-            val->value.v_binary.data_len = citem->type_arg;
-            val->value.v_binary.data = current_val;
-            break;
-        case TYPE_BSON:
-            // The first 4 bytes of the bson is the length.
-            len = BSON_UINT32_FROM_LE(*(uint32_t*)current_val);
-            if (len > citem->type_arg) {
-                DEBUG("Error: bson length greater than array width in "
-                      "row %d", idx);
-                break;
-            }
-            if (len < 5) {
-                DEBUG("Error: poorly formatted bson in row %d", idx);
-                break;
-            }
-            val->value_type = BSON_TYPE_DOCUMENT;
-            val->value.v_doc.data_len = len;
-            val->value.v_doc.data = current_val;
-            break;
-        default:
-            DEBUG("Unsupported type %d", citem->type);
-            break;
+        }
+        val->value_type = BSON_TYPE_DOCUMENT;
+        val->value.v_doc.data_len = len;
+        val->value.v_doc.data = current_val;
+        break;
+    default:
+        DEBUG("Unsupported type %d", citem->type);
+        break;
     }
 }
 
@@ -1160,19 +1217,25 @@ void monary_make_bson_value_t(bson_value_t* val,
  * @param name_offset Offset into the field name (for nested documents)
  * @param depth Number of recursive calls made
  */
-void monary_bson_from_columns(monary_column_item* columns,
-                              int row,
-                              int col_start,
-                              int col_end,
-                              bson_t* parent,
-                              int name_offset,
-                              int depth){
+void
+monary_bson_from_columns(monary_column_item * columns,
+                         int row,
+                         int col_start,
+                         int col_end,
+                         bson_t * parent, int name_offset, int depth)
+{
     bson_t child;
+
     bson_value_t val;
+
     char *field;
-    monary_column_item* citem;
+
+    monary_column_item *citem;
+
     int dot_idx;
+
     int i;
+
     int new_end;
 
     if (depth >= MONARY_MAX_RECURSION) {
@@ -1182,13 +1245,10 @@ void monary_bson_from_columns(monary_column_item* columns,
     }
     for (i = col_start; i < col_end; i++) {
         citem = columns + i;
-        if (! *(citem->mask + row)) {
+        if (!*(citem->mask + row)) {
             // only append unmasked values
             dot_idx = 0;
-            for (field = citem->field + name_offset;
-                 *(field + dot_idx) && (field[dot_idx] != '.');
-                 dot_idx++)
-            ; // Advance dot_idx to either '.' or '\0'
+            for (field = citem->field + name_offset; *(field + dot_idx) && (field[dot_idx] != '.'); dot_idx++); // Advance dot_idx to either '.' or '\0'
             if (*(field + dot_idx)) {
                 // Here we will have a nested document
                 new_end = i + 1;
@@ -1197,12 +1257,13 @@ void monary_bson_from_columns(monary_column_item* columns,
                 while (new_end < col_end) {
                     // Check that the field we're looking at is long enough to
                     // be at the same nested level as ``field``.
-                    if (strlen((columns + new_end)->field) > name_offset + dot_idx) {
+                    if (strlen((columns + new_end)->field) >
+                        name_offset + dot_idx) {
                         // Check that the field we're looking at is the same
                         // as ``field`` up until the '.'
                         if (strncmp(field,
                                     (columns + new_end)->field + name_offset,
-                                    dot_idx) == 0){
+                                    dot_idx) == 0) {
                             new_end++;
                             continue;
                         }
@@ -1215,7 +1276,8 @@ void monary_bson_from_columns(monary_column_item* columns,
                                          name_offset + dot_idx + 1, depth + 1);
                 bson_append_document_end(parent, &child);
                 i = new_end - 1;
-            } else {
+            }
+            else {
                 // No nested document in this else case
                 monary_make_bson_value_t(&val, citem, row);
                 bson_append_value(parent, citem->field + name_offset,
@@ -1234,13 +1296,16 @@ void monary_bson_from_columns(monary_column_item* columns,
  *
  * @return number masked if successful, -1 otherwise
  */
-int monary_mask_failed_writes(bson_iter_t* errors,
-                              unsigned char* mask,
-                              int offset)
+int
+monary_mask_failed_writes(bson_iter_t * errors,
+                          unsigned char *mask, int offset)
 {
     bson_iter_t array_iter;
+
     bson_iter_t document_iter;
+
     int index;
+
     int num_masked = 0;
 
     if (!BSON_ITER_HOLDS_ARRAY(errors)) {
@@ -1254,12 +1319,14 @@ int monary_mask_failed_writes(bson_iter_t* errors,
             bson_iter_find(&document_iter, "index")) {
             if (BSON_ITER_HOLDS_INT32(&document_iter)) {
                 index = bson_iter_int32(&document_iter);
-            } else {
+            }
+            else {
                 return -1;
             }
             mask[index + offset] = 1;
             num_masked++;
-        } else{
+        }
+        else {
             return -1;
         }
     }
@@ -1277,29 +1344,44 @@ int monary_mask_failed_writes(bson_iter_t* errors,
  * @param write_concern The write concern to be used for these inserts.
  * @param err bson_error_t that holds error information in case of failure
  */
-void monary_insert(mongoc_collection_t* collection,
-                   monary_column_data* coldata,
-                   monary_column_data* id_data,
-                   mongoc_client_t* client,
-                   mongoc_write_concern_t* write_concern,
-                   bson_error_t* err)
+void
+monary_insert(mongoc_collection_t * collection,
+              monary_column_data * coldata,
+              monary_column_data * id_data,
+              mongoc_client_t * client,
+              mongoc_write_concern_t * write_concern, bson_error_t * err)
 {
     bson_iter_t bsonit;
+
     bson_oid_t oid;
+
     bson_t document;
+
     bson_t reply;
-    monary_column_item* citem;
-    mongoc_bulk_operation_t* bulk_op;
+
+    monary_column_item *citem;
+
+    mongoc_bulk_operation_t *bulk_op;
+
     bool id_provided;
-    char* str;
+
+    char *str;
+
     int data_len;
+
     int i;
+
     int max_message_size;
+
     int num_docs;
+
     int num_inserted;
+
     int num_processed;
+
     int row;
-    uint8_t* storage;
+
+    uint8_t *storage;
 
     // Sanity checks
     if (!collection || !coldata || !id_data) {
@@ -1339,7 +1421,8 @@ void monary_insert(mongoc_collection_t* collection,
     for (row = 0; row < coldata->num_rows; row++) {
         if (!id_provided) {
             // If _id is not provided, append the generated ObjectId.
-            bson_oid_init_from_data(&oid, storage + (row * sizeof(bson_oid_t)));
+            bson_oid_init_from_data(&oid,
+                                    storage + (row * sizeof(bson_oid_t)));
             BSON_APPEND_OID(&document, "_id", &oid);
         }
         monary_bson_from_columns(coldata->columns, row, 0,
@@ -1363,7 +1446,8 @@ void monary_insert(mongoc_collection_t* collection,
             if (mongoc_bulk_operation_execute(bulk_op, &reply, err)) {
                 num_inserted += num_docs;
                 data_len = 0;
-            } else {
+            }
+            else {
                 DEBUG("Error message: %s", err->message);
 #ifndef NDEBUG
                 str = bson_as_json(&reply, NULL);
@@ -1377,14 +1461,16 @@ void monary_insert(mongoc_collection_t* collection,
                                                   num_processed);
                     if (i != -1) {
                         num_inserted += num_docs - i;
-                    } else {
+                    }
+                    else {
                         // If the document masking failed (from a bad server
                         // reply) then mask everything that we tried to write.
                         for (i = num_processed; i <= row; i++) {
                             (id_data->columns->mask)[i] = 1;
                         }
                     }
-                } else {
+                }
+                else {
                     DEBUG("%s", "Server reply did not contain writeErrors");
                     for (i = num_processed; i <= row; i++) {
                         (id_data->columns->mask)[i] = 1;
@@ -1400,7 +1486,7 @@ void monary_insert(mongoc_collection_t* collection,
             bson_reinit(&reply);
         }
     }
-end:
+  end:
     DEBUG("Inserted %d of %d documents", num_inserted, num_processed);
     bson_destroy(&document);
     bson_destroy(&reply);

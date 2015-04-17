@@ -1,15 +1,14 @@
 import os
 
-from nose import SkipTest
+import nose
 import pymongo
 
 import monary
 import test_helpers
 
-"""
-Test file for SSL functionality of monary.
+"""Test file for SSL functionality of monary.
 
-See test_ssl_instructions.txt
+See test_ssl_instructions.txt.
 
 """
 
@@ -33,7 +32,7 @@ def inittest_ssl():
         collection.insert({'x1': 0.0})
     except pymongo.errors.ConnectionFailure as e:
         if "SSL handshake failed" in str(e):
-            raise SkipTest("Can't connect to mongod with SSL", str(e))
+            raise nose.SkipTest("Can't connect to mongod with SSL", str(e))
         else:
             raise Exception("Unable to connect to mongod: ", str(e))
     return cert_path, client_pem, ca_pem
@@ -44,7 +43,7 @@ def inittest_no_ssl():
     try:
         client = pymongo.MongoClient("mongodb://localhost:27017")
     except pymongo.errors.ConnectionFailure as e:
-        raise SkipTest("Non-SSL connection failed", str(e))
+        raise nose.SkipTest("Non-SSL connection failed", str(e))
     else:
         collection = client.test.ssl
         collection.drop()
@@ -52,8 +51,8 @@ def inittest_no_ssl():
     return cert_path, client_pem, ca_pem
 
 
-def query_with(monary):
-    arrays = monary.query("test", "ssl", {}, ["x1"], ["float64"])
+def query_with(m):
+    arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
     assert len(arrays) == 1 and arrays[0] == 0.0
 
 
@@ -130,5 +129,3 @@ def test_validate_server_cert():
                        ca_file=ca_pem,
                        weak_cert_validation=False) as m:
         query_with(m)
-
-

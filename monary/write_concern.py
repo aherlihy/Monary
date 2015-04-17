@@ -9,8 +9,7 @@ MONARY_W_TAG = -4
 
 
 class WriteConcern(object):
-    """An python object to mimic the libmongoc mongoc_write_concern_t struct.
-    """
+    """A python object to mimic the libmongoc mongoc_write_concern_t struct."""
     def __init__(self, w=MONARY_W_DEFAULT, wtimeout=0, wjournal=False,
                  wfsync=False, wtag=None):
         """Create a new WriteConcern.
@@ -51,8 +50,7 @@ class WriteConcern(object):
         self.cmonary = cmonary
 
     def get_c_write_concern(self):
-        """Return a pointer to the C mongoc_write_concern_t struct.
-        """
+        """Return a pointer to the C mongoc_write_concern_t struct."""
         if self._c_write_concern is not None:
             self.destroy_c_write_concern()
         self._c_write_concern = self.cmonary.monary_create_write_concern(
@@ -60,23 +58,19 @@ class WriteConcern(object):
         return self._c_write_concern
 
     def destroy_c_write_concern(self):
-        """Free the C mongoc_write_concern_t struct.
-        """
+        """Free the C mongoc_write_concern_t struct."""
         if self._c_write_concern is not None:
             self.cmonary.monary_destroy_write_concern(self._c_write_concern)
             self._c_write_concern = None
 
     def __enter__(self):
-        """So WriteConcerns can be cleaned up using with statements.
-        """
+        """So WriteConcerns can be cleaned up using with statements."""
         return self
 
     def __exit__(self, *args):
-        """Clean up the C pointer on exit.
-        """
+        """Clean up the C pointer on exit."""
         self.destroy_c_write_concern()
 
     def __del__(self):
-        """Clean up the C pointer on delete.
-        """
+        """Clean up the C pointer on delete."""
         self.destroy_c_write_concern()
