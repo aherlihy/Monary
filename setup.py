@@ -99,8 +99,4 @@ setup(
     ],
     url = "http://bitbucket.org/djcbeach/monary/",
     test_suite = test_suite,
-    # cmdclass = {
-    #     'build_cmongo': BuildCMongoDriver,
-    #     'build_cmonary': BuildCMonary
-    # }
 )
