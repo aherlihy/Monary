@@ -108,14 +108,11 @@ class TestNoSSL(unittest.TestCase):
             collection.drop()
             collection.insert({'x1': 0.0})
 
-<<<<<<< HEAD
     @classmethod
     def tearDownClass(cls):
         with pymongo.MongoClient() as c:
             c.drop_database("test")
 
-=======
->>>>>>> 490775f... Use unittest and setup.py to run tests.
     def test_ssl_false_no_ssl(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=false",
                            pem_file=global_client_pem) as m:
