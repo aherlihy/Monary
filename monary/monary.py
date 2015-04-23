@@ -30,7 +30,7 @@ except ImportError:
 import numpy
 import bson
 
-from .write_concern import WriteConcern
+from write_concern import WriteConcern
 
 cmonary = None
 
@@ -61,6 +61,7 @@ def _load_cmonary_lib():
     global cmonary
     moduledir = os.path.dirname(os.path.abspath(__file__))
     if platform.system() == 'Windows':
+	print "LOOKING FOR LIBCMONARY"
         cmonary_fname = "libcmonary.dll"
     else:
         cmonary_fname = "libcmonary.so"

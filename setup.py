@@ -34,26 +34,17 @@ class BuildException(Exception):
     pass
 
 
-try:
-    if pkgconfig.exists("libmongoc-1.0"):
-        pkgcfg = pkgconfig.parse("libmongoc-1.0")
-        settings['include_dirs'] = list(pkgcfg['include_dirs'])
-        settings['library_dirs'] = list(pkgcfg['library_dirs'])
-        settings['libraries'] = list(pkgcfg['libraries'])
-        settings['define_macros'] = list(pkgcfg['define_macros'])
-    else:
-        raise BuildException("Error, unable to find libmongoc-1.0"
-                             " with pkgconfig")
-except EnvironmentError as e:
-    raise BuildException("Error in pkgconfig: ", e)
+settings['include_dirs'] = ["C:\usr\include\libbson-1.0", "C:\usr\include\libmongoc-1.0"]
+
+settings['libraries'] = ["C:\usr\lib\bson-1.0", "C:\usr\lib\mongoc-1.0"]
+
+ 
 
 
 module = Extension('monary.libcmonary',
                    extra_compile_args=CFLAGS,
                    include_dirs=settings['include_dirs'],
-                   library_dirs=settings['library_dirs'],
                    libraries=settings['libraries'],
-                   define_macros=settings['define_macros'],
                    sources=[os.path.join("monary/cmonary.c")],
 
                    )

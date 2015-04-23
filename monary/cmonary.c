@@ -105,6 +105,7 @@ monary_connect(const char *uri, const char *pem_file,
 {
 
     mongoc_client_t *client;
+    mongoc_uri_t *mongo_uri;
 
     if (!uri) {
         monary_error(err, "empty URI passed to monary_connect");
@@ -118,7 +119,7 @@ monary_connect(const char *uri, const char *pem_file,
         return NULL;
     }
     DEBUG("%s", "Connection successful");
-    mongoc_uri_t *mongo_uri = mongoc_uri_new(uri);
+    mongo_uri = mongoc_uri_new(uri);
 
     if (mongoc_uri_get_ssl(mongo_uri)) {
         mongoc_ssl_opt_t opts = { pem_file, pem_pwd, ca_file, ca_dir, crl_file,
