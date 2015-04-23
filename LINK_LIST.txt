@@ -1,0 +1,15 @@
+COMPILE
+cl.exe /c /IC:/usr/include/libbson-1.0 /IC:/usr/include/libmongoc-1.0 /D_USRDLL /D_WINDLL cmonary.c 
+
+LINK
+link.exe /DLL /nologo /INCREMENTAL:NO /LIBPATH:c:\Python27\libs /LIBPATH:c:\Python27\PCbuild\amd64 cmonary.obj C:\usr\lib\bson-1.0.lib C:\usr\lib\mongoc-1.0.lib /EXPORT:monary_init /EXPORT:monary_cleanup /EXPORT:monary_connect /EXPORT:monary_disconnect /EXPORT:monary_use_collection /EXPORT:monary_destroy_collection /EXPORT:monary_alloc_column_data /EXPORT:monary_free_column_data /EXPORT:monary_set_column_item /EXPORT:monary_query_count /EXPORT:monary_init_query /EXPORT:monary_init_aggregate /EXPORT:monary_load_query /EXPORT:monary_close_query /EXPORT:monary_create_write_concern /EXPORT:monary_destroy_write_concern /EXPORT:monary_insert /OUT:libcmonary.dll
+
+COMPILE+LINK
+cl.exe /IC:/usr/include/libbson-1.0 /IC:/usr/include/libmongoc-1.0 /D_USRDLL /D_WINDLL cmonary.c /link C:/usr/lib/bson-1.0.lib C:/usr/lib/mongoc-1.0.lib /DLL /EXPORT:monary_init /EXPORT:monary_cleanup /EXPORT:monary_connect /EXPORT:monary_disconnect /EXPORT:monary_use_collection /EXPORT:monary_destroy_collection /EXPORT:monary_alloc_column_data /EXPORT:monary_free_column_data /EXPORT:monary_set_column_item /EXPORT:monary_query_count /EXPORT:monary_init_query /EXPORT:monary_init_aggregate /EXPORT:monary_load_query /EXPORT:monary_close_query /EXPORT:monary_create_write_concern /EXPORT:monary_destroy_write_concern /EXPORT:monary_insert /OUT:libcmonary.dll
+
+
+
+EXPORT SYMBOLS
+/EXPORT:monary_init /EXPORT:monary_cleanup /EXPORT:monary_connect /EXPORT:monary_disconnect /EXPORT:monary_use_collection /EXPORT:monary_destroy_collection /EXPORT:monary_alloc_column_data /EXPORT:monary_free_column_data /EXPORT:monary_set_column_item /EXPORT:monary_query_count /EXPORT:monary_init_query /EXPORT:monary_init_aggregate /EXPORT:monary_load_query /EXPORT:monary_close_query /EXPORT:monary_create_write_concern /EXPORT:monary_destroy_write_concern /EXPORT:monary_insert
+
+
