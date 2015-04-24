@@ -2,6 +2,7 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 import os
 import pkgconfig
+import platform
 import sys
 
 # Don't force people to install setuptools unless
@@ -34,37 +35,59 @@ class BuildException(Exception):
     pass
 
 settings['export_symbols'] = ["monary_init",
-"monary_cleanup",
-"monary_connect",
-"monary_disconnect",
-"monary_use_collection",
-"monary_destroy_collection",
-"monary_alloc_column_data",
-"monary_free_column_data",
-"monary_set_column_item",
-"monary_query_count",
-"monary_init_query",
-"monary_init_aggregate",
-"monary_load_query",
-"monary_close_query",
-"monary_create_write_concern",
-"monary_destroy_write_concern",
-"monary_insert"]
+                              "monary_cleanup",
+                              "monary_connect",
+                              "monary_disconnect",
+                              "monary_use_collection",
+                              "monary_destroy_collection",
+                              "monary_alloc_column_data",
+                              "monary_free_column_data",
+                              "monary_set_column_item",
+                              "monary_query_count",
+                              "monary_init_query",
+                              "monary_init_aggregate",
+                              "monary_load_query",
+                              "monary_close_query",
+                              "monary_create_write_concern",
+                              "monary_destroy_write_concern",
+                              "monary_insert"]
 
-settings['include_dirs'] = ["C:\\usr\\include\\libbson-1.0","C:\\usr\\include\\libmongoc-1.0"]
+settings['sources'] = [os.path.join("monary", "cmonary.c")]
 
-settings['libraries'] = ["C:\\usr\\lib\\bson-1.0", "C:\\usr\\lib\\mongoc-1.0"]
+if platform.system() == 'Windows':
 
+    include_dirs = ["C:/", "usr", "include"]
+    library_dirs = ["C:/", "usr", "lib"]
+
+    settings["libraries"] = ["libbson-1.0", "libmongoc-1.0"]
+    settings['include_dirs'] = [os.path.join(*include_dirs + ["libbson-1.0"]),
+                                os.path.join(*include_dirs + ["libmongoc-1.0"])]
+    settings['library_dirs'] = [os.path.join(*library_dirs)]
+else:
+    try:
+        if pkgconfig.exists("libmongoc-1.0"):
+            pkgcfg = pkgconfig.parse("libmongoc-1.0")
+            settings['include_dirs'] = list(pkgcfg['include_dirs'])
+            settings['library_dirs'] = list(pkgcfg['library_dirs'])
+            settings['libraries'] = list(pkgcfg['libraries'])
+            settings['define_macros'] = list(pkgcfg['define_macros'])
+        else:
+            raise BuildException("Error, unable to find libmongoc-1.0"
+                                 " with pkgconfig")
+    except EnvironmentError as e:
+        raise BuildException("Error in pkgconfig: ", e)
+
+
+print "SETTINGS", settings
 
 
 module = Extension('monary.libcmonary',
                    extra_compile_args=CFLAGS,
                    include_dirs=settings['include_dirs'],
                    libraries=settings['libraries'],
-		   export_symbols=settings['export_symbols'],
-                   sources=[os.path.join("monary\\cmonary.c")],
-
-                   )
+                   library_dirs=settings['library_dirs'],
+                   export_symbols=settings['export_symbols'],
+                   sources=settings['sources'])
 
 
 
