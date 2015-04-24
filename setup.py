@@ -59,7 +59,7 @@ if platform.system() == 'Windows':
     include_dirs = ["C:/", "usr", "include"]
     library_dirs = ["C:/", "usr", "lib"]
 
-    settings["libraries"] = ["libbson-1.0", "libmongoc-1.0"]
+    settings["libraries"] = ["bson-1.0", "mongoc-1.0"]
     settings['include_dirs'] = [os.path.join(*include_dirs + ["libbson-1.0"]),
                                 os.path.join(*include_dirs + ["libmongoc-1.0"])]
     settings['library_dirs'] = [os.path.join(*library_dirs)]
