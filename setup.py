@@ -4,6 +4,7 @@ import os
 import pkgconfig
 import platform
 import sys
+import warnings
 
 # Don't force people to install setuptools unless
 # we have to.
@@ -13,6 +14,22 @@ except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
     from setuptools import setup, Extension
+
+
+mongoc_src = None
+bson_src = None
+for s in range(len(sys.argv) - 1, -1, -1):
+    if sys.argv[s] == "--libmongoc-root":
+        mongoc_src = sys.argv[s+1]
+	sys.argv.remove("--libbson-root")
+	sys.argv.remove(bson_src)
+
+
+    if sys.argv[s] == "--libbson-root":
+        bson_src = sys.argv[s+1]
+	sys.argv.remove("--libmongoc-root")
+	sys.argv.remove(mongoc_src)
+
 
 test_requires = []
 test_suite = "test"
@@ -33,6 +50,7 @@ if not DEBUG:
 class BuildException(Exception):
     """Indicates an error occurred while compiling from source."""
     pass
+
 
 settings['export_symbols'] = ["monary_init",
                               "monary_cleanup",
@@ -62,43 +80,35 @@ try:
         settings['libraries'] = list(pkgcfg['libraries'])
         settings['define_macros'] = list(pkgcfg['define_macros'])
     else:
-        if platform.system() == 'Windows':
+        raise BuildException("Error, unable to find libmongoc-1.0"
+                                 " with pkgconfig")
+except EnvironmentError as e:
+    if platform.system() == 'Windows':
+        if mongoc_src is None and bson_src is None:
+            warnings.warn("Warning: no prefix given for libmongoc, defaulting "
+                      "to C:\\Program Files. To specify, please call setup.py "
+                      "with the following arguments:\n"
+                      "\tpython setup.py install --libbson-root C://usr --libmongoc-root C://usr")
             # Set default location for libmongoc and libbson.
             mongoc_src = os.path.join("C:/", "Program Files")
             bson_src = os.path.join("C:/", "Program Files")
 
-            # Search command line args for libmongoc and libbson path.
-            if "--libmongoc-root" in sys.argv or "--libbson-root"  in sys.argv:
-                for s in range(len(sys.argv)):
-                    if sys.argv[s] == "--libmongoc-root":
-                        mongoc_src = sys.argv[s+1]
-                    if sys.argv[s] == "--libbson-root":
-                        bson_src = sys.argv[s+1]
-            else:
-                print("Warning: no prefix given for libmongoc, defaulting "
-                      "to C:\\Program Files. To specify, please call setup.py"
-                      "with the following arguments:\n"
-                      "\tpython setup.py install --libbson-root C://usr --libmongoc-root C://usr")
+        # Search command line args for libmongoc and libbson path.
+        
 
-            settings["libraries"] = ["bson-1.0", "mongoc-1.0"]
-            settings['include_dirs'] = [os.path.join(mongoc_src,
+        settings["libraries"] = ["bson-1.0", "mongoc-1.0"]
+        settings['include_dirs'] = [os.path.join(mongoc_src,
                                                      "include",
                                                      "libmongoc-1.0"),
                                         os.path.join(bson_src,
                                                      "include",
                                                      "libbson-1.0")]
-            settings['library_dirs'] = [os.path.join(mongoc_src,
+        settings['library_dirs'] = [os.path.join(mongoc_src,
                                                      "lib"),
                                         os.path.join(bson_src,
                                                      "lib")]
-        else:
-            raise BuildException("Error, unable to find libmongoc-1.0"
-                                 " with pkgconfig")
-except EnvironmentError as e:
-    raise BuildException("Error in pkgconfig: ", e)
-
-
-print "SETTINGS", settings
+    else:
+        raise BuildException("Error in pkgconfig: ", e)
 
 
 module = Extension('monary.libcmonary',
