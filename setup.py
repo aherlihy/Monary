@@ -29,11 +29,11 @@ for s in range(len(sys.argv) - 1, -1, -1):
     if sys.argv[s] == "--default-libmongoc":
         mongoc_src = sys.argv[s + 1]
         sys.argv.remove("--default-libmongoc")
-        sys.argv.remove(bson_src)
+        sys.argv.remove(mongoc_src)
     elif sys.argv[s] == "--default-libbson":
         bson_src = sys.argv[s + 1]
         sys.argv.remove("--default-libbson")
-        sys.argv.remove(mongoc_src)
+        sys.argv.remove(bson_src)
 
 settings = {}
 settings['export_symbols'] = ["monary_init",
@@ -58,9 +58,8 @@ settings['include_dirs'] = [
     os.path.join(mongoc_src, "include", "libmongoc-1.0"),
     os.path.join(bson_src, "include", "libbson-1.0")]
 settings['library_dirs'] = [
-    os.path.join(mongoc_src, "libdir"), os.path.join(bson_src, "libdir")]
+    os.path.join(mongoc_src, "libdir"), os.path.join(bson_src, "lib")]
 settings['libraries'] = libraries
-
 
 test_requires = []
 test_suite = "test"
@@ -91,18 +90,26 @@ except ImportError:
     warnings.warn(warning)
 
 else:
-    # Use pkgconfig to find location of libmongoc or libbson.
-    if pkgconfig.exists("libmongoc-1.0"):
-        pkgcfg = pkgconfig.parse("libmongoc-1.0")
-        settings['include_dirs'] = list(pkgcfg['include_dirs'])
-        settings['library_dirs'] = list(pkgcfg['library_dirs'])
-        settings['libraries'] = list(pkgcfg['libraries'])
-        settings['define_macros'] = list(pkgcfg['define_macros'])
-    else:
-        warnings.warn("WARNING: unable to find libmongoc-1.0 with pkgconfig. "
-                      "Please check that PKG_CONFIG_PATH is set to a path "
-                      "that can find the .pc files for libbson and libmongoc."
-                      "Will use " + mongoc_src + " and " + bson_src + " instead.")
+    try:
+        # Use pkgconfig to find location of libmongoc or libbson.
+        if pkgconfig.exists("libmongoc-1.0"):
+            pkgcfg = pkgconfig.parse("libmongoc-1.0")
+            settings['include_dirs'] = list(pkgcfg['include_dirs'])
+            settings['library_dirs'] = list(pkgcfg['library_dirs'])
+            settings['libraries'] = list(pkgcfg['libraries'])
+            settings['define_macros'] = list(pkgcfg['define_macros'])
+        else:
+            warning = ("WARNING: unable to find libmongoc-1.0 with pkgconfig. "
+                       "Please check that PKG_CONFIG_PATH is set to a path "
+                       "that can find the .pc files for libbson and libmongoc."
+                       "Will use libmongoc=%s and libbson=%s instead."
+               % (mongoc_src, bson_src))
+            warnings.warn(warning)
+    except EnvironmentError:
+        warning = ("WARNING: the system tool pkg-config is not installed. "
+                      "Will use libmongoc=%s and libbson=%s instead."
+                       % (mongoc_src, bson_src))
+        warnings.warn(warning)
 
 module = Extension('monary.libcmonary',
                    extra_compile_args=CFLAGS,
