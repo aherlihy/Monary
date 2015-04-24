@@ -28,7 +28,8 @@ try:
         global_coll.drop()
         global_coll.insert({'x1': 0.0})
 except pymongo.errors.ConnectionFailure as global_e:
-    if "SSL handshake failed" in str(global_e) or "forcibly closed by the remote host" in str(global_e):
+    if ("SSL handshake failed" in str(global_e) or
+                "forcibly closed by the remote host" in str(global_e)):
         ssl_err = "Can't connect to mongod with SSL: " + str(global_e)
     else:
         raise RuntimeError("Unable to connect to mongod: ", str(global_e))

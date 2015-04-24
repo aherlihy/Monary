@@ -123,7 +123,8 @@ class TestExceptions(unittest.TestCase):
     def test_monary_connect2(self):
         with self.assertRaisesRegexp(
                 monary.monary.MonaryError,
-		re.compile("(Failed to authenticate credentials|Authentication failed)")):
+                re.compile("(Failed to authenticate credentials|Authentication"
+                           " failed)")):
             with monary.Monary(username='mng') as m:
                 m.query("test", "collection", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
