@@ -85,10 +85,10 @@ try:
 except EnvironmentError as e:
     if platform.system() == 'Windows':
         if mongoc_src is None and bson_src is None:
-            warnings.warn("Warning: no prefix given for libmongoc, defaulting "
-                      "to C:\\Program Files. To specify, please call setup.py "
-                      "with the following arguments:\n"
-                      "\tpython setup.py install --libbson-root C://usr --libmongoc-root C://usr")
+            warnings.warn("Warning: no prefix given for libmongoc. "
+                      "Defaulting to C:\\Program Files. To specify, please "
+                      "call setup.py with the following arguments:\n"
+                      "\tpython setup.py install --libbson-root C://usr --libmongoc-root C://usr\n")
             # Set default location for libmongoc and libbson.
             mongoc_src = os.path.join("C:/", "Program Files")
             bson_src = os.path.join("C:/", "Program Files")
