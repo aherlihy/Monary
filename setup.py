@@ -54,28 +54,48 @@ settings['export_symbols'] = ["monary_init",
 
 settings['sources'] = [os.path.join("monary", "cmonary.c")]
 
-if platform.system() == 'Windows':
+try:
+    if pkgconfig.exists("libmongoc-1.0"):
+        pkgcfg = pkgconfig.parse("libmongoc-1.0")
+        settings['include_dirs'] = list(pkgcfg['include_dirs'])
+        settings['library_dirs'] = list(pkgcfg['library_dirs'])
+        settings['libraries'] = list(pkgcfg['libraries'])
+        settings['define_macros'] = list(pkgcfg['define_macros'])
+    else:
+        if platform.system() == 'Windows':
+            # Set default location for libmongoc and libbson.
+            mongoc_src = os.path.join("C:/", "Program Files")
+            bson_src = os.path.join("C:/", "Program Files")
 
-    include_dirs = ["C:/", "usr", "include"]
-    library_dirs = ["C:/", "usr", "lib"]
+            # Search command line args for libmongoc and libbson path.
+            if "--libmongoc-root" in sys.argv or "--libbson-root"  in sys.argv:
+                for s in range(len(sys.argv)):
+                    if sys.argv[s] == "--libmongoc-root":
+                        mongoc_src = sys.argv[s+1]
+                    if sys.argv[s] == "--libbson-root":
+                        bson_src = sys.argv[s+1]
+            else:
+                print("Warning: no prefix given for libmongoc, defaulting "
+                      "to C:\\Program Files. To specify, please call setup.py"
+                      "with the following arguments:\n"
+                      "\tpython setup.py install --libbson-root C://usr --libmongoc-root C://usr")
 
-    settings["libraries"] = ["bson-1.0", "mongoc-1.0"]
-    settings['include_dirs'] = [os.path.join(*include_dirs + ["libbson-1.0"]),
-                                os.path.join(*include_dirs + ["libmongoc-1.0"])]
-    settings['library_dirs'] = [os.path.join(*library_dirs)]
-else:
-    try:
-        if pkgconfig.exists("libmongoc-1.0"):
-            pkgcfg = pkgconfig.parse("libmongoc-1.0")
-            settings['include_dirs'] = list(pkgcfg['include_dirs'])
-            settings['library_dirs'] = list(pkgcfg['library_dirs'])
-            settings['libraries'] = list(pkgcfg['libraries'])
-            settings['define_macros'] = list(pkgcfg['define_macros'])
+            settings["libraries"] = ["bson-1.0", "mongoc-1.0"]
+            settings['include_dirs'] = [os.path.join(mongoc_src,
+                                                     "include",
+                                                     "libmongoc-1.0"),
+                                        os.path.join(bson_src,
+                                                     "include",
+                                                     "libbson-1.0")]
+            settings['library_dirs'] = [os.path.join(mongoc_src,
+                                                     "lib"),
+                                        os.path.join(bson_src,
+                                                     "lib")]
         else:
             raise BuildException("Error, unable to find libmongoc-1.0"
                                  " with pkgconfig")
-    except EnvironmentError as e:
-        raise BuildException("Error in pkgconfig: ", e)
+except EnvironmentError as e:
+    raise BuildException("Error in pkgconfig: ", e)
 
 
 print "SETTINGS", settings
