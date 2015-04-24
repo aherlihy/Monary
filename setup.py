@@ -33,19 +33,36 @@ class BuildException(Exception):
     """Indicates an error occurred while compiling from source."""
     pass
 
+settings['export_symbols'] = ["monary_init",
+"monary_cleanup",
+"monary_connect",
+"monary_disconnect",
+"monary_use_collection",
+"monary_destroy_collection",
+"monary_alloc_column_data",
+"monary_free_column_data",
+"monary_set_column_item",
+"monary_query_count",
+"monary_init_query",
+"monary_init_aggregate",
+"monary_load_query",
+"monary_close_query",
+"monary_create_write_concern",
+"monary_destroy_write_concern",
+"monary_insert"]
 
-settings['include_dirs'] = ["C:\usr\include\libbson-1.0", "C:\usr\include\libmongoc-1.0"]
+settings['include_dirs'] = ["C:\\usr\\include\\libbson-1.0","C:\\usr\\include\\libmongoc-1.0"]
 
-settings['libraries'] = ["C:\usr\lib\bson-1.0", "C:\usr\lib\mongoc-1.0"]
+settings['libraries'] = ["C:\\usr\\lib\\bson-1.0", "C:\\usr\\lib\\mongoc-1.0"]
 
- 
 
 
 module = Extension('monary.libcmonary',
                    extra_compile_args=CFLAGS,
                    include_dirs=settings['include_dirs'],
                    libraries=settings['libraries'],
-                   sources=[os.path.join("monary/cmonary.c")],
+		   export_symbols=settings['export_symbols'],
+                   sources=[os.path.join("monary\\cmonary.c")],
 
                    )
 

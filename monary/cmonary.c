@@ -29,6 +29,8 @@ enum {
     TYPE_INT64 = 6,
     TYPE_UINT8 = 7,
     TYPE_UINT16 = 8,
+
+
     TYPE_UINT32 = 9,
     TYPE_UINT64 = 10,
     TYPE_FLOAT32 = 11,
@@ -43,6 +45,11 @@ enum {
     TYPE_LENGTH = 20,   // length of string (character count) or num elements in BSON (uint32)
     LAST_TYPE = 20      // BSON type code as per the BSON specification
 };
+
+
+void
+initlibcmonary(void)
+{}
 
 /**
  * Helper function to set the fields of bson_error_t
