@@ -72,7 +72,7 @@ def _load_cmonary_lib():
             if basename == cmonary_fname:
                 cmonaryfile = os.path.join(root, basename)
     if cmonaryfile is None:
-        raise RuntimeError("Unable to find cmonary shared library:",
+        raise RuntimeError("Unable to find cmonary shared library: ",
                            cmonary_fname)
 
     cmonary = ctypes.CDLL(cmonaryfile)

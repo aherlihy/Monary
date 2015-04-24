@@ -35,31 +35,31 @@ for s in range(len(sys.argv) - 1, -1, -1):
         sys.argv.remove("--default-libbson")
         sys.argv.remove(bson_src)
 
-settings = {}
-settings['export_symbols'] = ["monary_init",
-                              "monary_cleanup",
-                              "monary_connect",
-                              "monary_disconnect",
-                              "monary_use_collection",
-                              "monary_destroy_collection",
-                              "monary_alloc_column_data",
-                              "monary_free_column_data",
-                              "monary_set_column_item",
-                              "monary_query_count",
-                              "monary_init_query",
-                              "monary_init_aggregate",
-                              "monary_load_query",
-                              "monary_close_query",
-                              "monary_create_write_concern",
-                              "monary_destroy_write_concern",
-                              "monary_insert"]
-settings['sources'] = [os.path.join("monary", "cmonary.c")]
-settings['include_dirs'] = [
-    os.path.join(mongoc_src, "include", "libmongoc-1.0"),
-    os.path.join(bson_src, "include", "libbson-1.0")]
-settings['library_dirs'] = [
-    os.path.join(mongoc_src, "libdir"), os.path.join(bson_src, "lib")]
-settings['libraries'] = libraries
+settings = {
+    'export_symbols': ["monary_init",
+                       "monary_cleanup",
+                       "monary_connect",
+                       "monary_disconnect",
+                       "monary_use_collection",
+                       "monary_destroy_collection",
+                       "monary_alloc_column_data",
+                       "monary_free_column_data",
+                       "monary_set_column_item",
+                       "monary_query_count",
+                       "monary_init_query",
+                       "monary_init_aggregate",
+                       "monary_load_query",
+                       "monary_close_query",
+                       "monary_create_write_concern",
+                       "monary_destroy_write_concern",
+                       "monary_insert"],
+    'sources': [os.path.join("monary", "cmonary.c")],
+    'include_dirs': [os.path.join(mongoc_src, "include", "libmongoc-1.0"),
+                     os.path.join(bson_src, "include", "libbson-1.0")],
+    'library_dirs': [os.path.join(mongoc_src, "libdir"),
+                     os.path.join(bson_src, "lib")],
+    'libraries': libraries
+}
 
 test_requires = []
 test_suite = "test"
@@ -82,12 +82,11 @@ try:
     import pkgconfig
 except ImportError:
     # Set to default locations for libmongoc and libbson.
-    warning = ("WARNING: the python package pkgconfig is not installed. "
-                  "If you have pkg-config installed on your system, please "
-                  "install the python's pkgconfig, e.g. \"pip install "
-                  "pkgconfig\". Will use libmongoc=%s and libbson=%s instead."
-               % (mongoc_src, bson_src))
-    warnings.warn(warning)
+    warnings.warn(("WARNING: the python package pkgconfig is not installed. "
+                   "If you have pkg-config installed on your system, please "
+                   "install the python's pkgconfig, e.g. \"pip install "
+                   "pkgconfig\". Will use libmongoc=%s and libbson=%s instead."
+                   % (mongoc_src, bson_src)))
 
 else:
     try:
@@ -99,17 +98,15 @@ else:
             settings['libraries'] = list(pkgcfg['libraries'])
             settings['define_macros'] = list(pkgcfg['define_macros'])
         else:
-            warning = ("WARNING: unable to find libmongoc-1.0 with pkgconfig. "
-                       "Please check that PKG_CONFIG_PATH is set to a path "
-                       "that can find the .pc files for libbson and libmongoc."
-                       "Will use libmongoc=%s and libbson=%s instead."
-               % (mongoc_src, bson_src))
-            warnings.warn(warning)
+            warnings.warn(("WARNING: unable to find libmongoc-1.0 with "
+                           "pkgconfig. Please check that PKG_CONFIG_PATH is "
+                           "set to a path that can find the .pc files for "
+                           "libbson and libmongoc. Will use libmongoc=%s and "
+                           "libbson=%s instead." % (mongoc_src, bson_src)))
     except EnvironmentError:
-        warning = ("WARNING: the system tool pkg-config is not installed. "
+        warnings.warn(("WARNING: the system tool pkg-config is not installed. "
                       "Will use libmongoc=%s and libbson=%s instead."
-                       % (mongoc_src, bson_src))
-        warnings.warn(warning)
+                       % (mongoc_src, bson_src)))
 
 module = Extension('monary.libcmonary',
                    extra_compile_args=CFLAGS,
@@ -120,7 +117,6 @@ module = Extension('monary.libcmonary',
                    sources=settings['sources'])
 
 
-
 # Get README info
 try:
     with open("README.rst") as fd:
@@ -129,21 +125,21 @@ except:
     readme_content = ""
 
 setup(
-    name = "Monary",
-    version = VERSION,
-    packages = ["monary"],
-    setup_requires = ["pymongo", "numpy", "pkgconfig"],
-    tests_require = test_requires,
-    package_dir = {"monary": "monary"},
+    name="Monary",
+    version=VERSION,
+    packages=["monary"],
+    setup_requires=["pymongo", "numpy", "pkgconfig"],
+    tests_require=test_requires,
+    package_dir={"monary": "monary"},
 
-    ext_modules = [module],
+    ext_modules=[module],
 
-    author = "David J. C. Beach",
-    author_email = "info@djcinnovations.com",
-    description = "Monary performs high-performance column queries on MongoDB",
-    long_description = readme_content,
-    keywords = "monary pymongo mongo mongodb numpy array",
-    classifiers = [
+    author="David J. C. Beach",
+    author_email="info@djcinnovations.com",
+    description="Monary performs high-performance column queries on MongoDB",
+    long_description=readme_content,
+    keywords="monary pymongo mongo mongodb numpy array",
+    classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
@@ -158,6 +154,6 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Database"
     ],
-    url = "http://bitbucket.org/djcbeach/monary/",
-    test_suite = test_suite,
+    url="http://bitbucket.org/djcbeach/monary/",
+    test_suite=test_suite,
 )
