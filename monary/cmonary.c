@@ -29,8 +29,6 @@ enum {
     TYPE_INT64 = 6,
     TYPE_UINT8 = 7,
     TYPE_UINT16 = 8,
-
-
     TYPE_UINT32 = 9,
     TYPE_UINT64 = 10,
     TYPE_FLOAT32 = 11,
