@@ -1,17 +1,20 @@
 INSTALL CMAKE:
-    - Download: CMake Win32 Binary, select *ADD TO PATH.
+    - Download: http://www.cmake.org/download/ CMake Win32 Binary, select *ADD TO PATH.
 
 
 INSTALL CMONGO:
     - IN cmd.exe ADMIN command prompt:
-   	> PATH=%PATH%;C:\usr\bin;C:\usr\lib
 	> cmake -DCMAKE_INSTALL_PREFIX=C:\usr -G "Visual Studio 12 Win64" .
+		**NOTE: if you don't set PREFIX then it will install into C:\Program Files\libbson
 	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" ALL_BUILD.vcxproj
 	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" INSTALL.vcxproj
 
     - Delete all tests and references to test in CMakefiles.txt
 
 	> cmake -DCMAKE_INSTALL_PREFIX=C:\usr -DBSON_ROOT_DIR=C:\usr -G "Visual Studio 12 Win64" .
+		**NOTE: if you didn't set PREFIX for libbson, then run
+		> cmake -DBSON_ROOT_DIR="C:\Program Files\libbson" -G "Visual Studio 12 Win64" .
+		**NOTE: if you don't set a PREFIX it will install into C:\Program Files\libmongoc
 	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" ALL_BUILD.vcxproj
 	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" INSTALL.vcxproj
 
@@ -23,10 +26,10 @@ INSTALL MONARY:
     - Download: http://www.microsoft.com/en-us/download/details.aspx?id=44266
 
     - IN Visual C++ 2008 64-bit Cross Tools Command Prompt
-	> PATH=%PATH%;C:\usr\bin;C:\usr\lib (might not be needed)
 	> SET DISTUTILS_USE_SDK=1
 	> SET MSSdk=1
 	> python setup.py install --default-libmongoc C:\usr --default-libbson C:\usr
+		**NOTE: if you didn't set a prefix, you can just run python setup.py install.
 
 COMPILE CMONARY: (If you want to create a .dll through cl instead of a .pyd with python)
 

@@ -16,8 +16,8 @@ except ImportError:
 # Set the default location of libmongoc and libbson.
 # NOTE: Will only use the default if pkgconfig cannot find anything.
 if platform.system() == "Windows":
-    mongoc_src = os.path.join("C:/", "Program Files")
-    bson_src = os.path.join("C:/", "Program Files")
+    mongoc_src = os.path.join("C:/", "Program Files", "libmongoc")
+    bson_src = os.path.join("C:/", "Program Files", "libbson")
     libraries = ["bson-1.0", "mongoc-1.0"]
 else:
     mongoc_src = os.path.join("/opt")
@@ -56,7 +56,7 @@ settings = {
     'sources': [os.path.join("monary", "cmonary.c")],
     'include_dirs': [os.path.join(mongoc_src, "include", "libmongoc-1.0"),
                      os.path.join(bson_src, "include", "libbson-1.0")],
-    'library_dirs': [os.path.join(mongoc_src, "libdir"),
+    'library_dirs': [os.path.join(mongoc_src, "lib"),
                      os.path.join(bson_src, "lib")],
     'libraries': libraries
 }
