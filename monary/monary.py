@@ -30,7 +30,7 @@ except ImportError:
 import numpy
 import bson
 
-from write_concern import WriteConcern
+from .write_concern import WriteConcern
 
 cmonary = None
 
