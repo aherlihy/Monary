@@ -22,7 +22,7 @@ if platform.system() == "Windows":
 else:
     mongoc_src = os.path.join("/opt")
     bson_src = os.path.join("/opt")
-    libraries = ["bson-1.0", "crypto", "ssl", "sasl2", "z", "mongoc-1.0" ]
+    libraries = ["bson-1.0", "crypto", "ssl", "sasl2", "z", "mongoc-1.0"]
 
 # Check if the user specified the location.
 for s in range(len(sys.argv) - 1, -1, -1):
