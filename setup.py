@@ -56,8 +56,8 @@ settings = {
     'sources': [os.path.join("monary", "cmonary.c")],
     'include_dirs': [os.path.join(mongoc_src, "include", "libmongoc-1.0"),
                      os.path.join(bson_src, "include", "libbson-1.0")],
-    'library_dirs': [os.path.join(mongoc_src, "libdir"),
-                     os.path.join(bson_src, "libdir")],
+    'library_dirs': [os.path.join(mongoc_src, "lib"),
+                     os.path.join(bson_src, "lib")],
     'libraries': libraries
 }
 
