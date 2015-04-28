@@ -31,7 +31,9 @@ INSTALL MONARY:
 	> python setup.py install --default-libmongoc C:\usr --default-libbson C:\usr
 		**NOTE: if you didn't set a prefix, you can just run python setup.py install.
 
-COMPILE CMONARY: (If you want to create a .dll through cl instead of a .pyd with python)
+COMPILE CMONARY: If you want to create a shared library without Python. Note that
+    this will produce a .dll file, which in order to be used by monary.py, should be
+    renamed "libcmonary.pyd".
 
 
     - IN Visual C++ 2008 64-bit Cross Tools Command Prompt
