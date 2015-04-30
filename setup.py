@@ -70,7 +70,7 @@ if sys.version_info[:2] == (2, 6):
 
 DEBUG = False
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 CFLAGS = ["-fPIC", "-O2"]
 
