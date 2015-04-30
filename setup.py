@@ -20,8 +20,8 @@ if platform.system() == "Windows":
     bson_src = os.path.join("C:/", "Program Files", "libbson")
     libraries = ["bson-1.0", "mongoc-1.0"]
 else:
-    mongoc_src = os.path.join("/opt")
-    bson_src = os.path.join("/opt")
+    mongoc_src = os.path.join("/usr", "local")
+    bson_src = os.path.join("/usr", "local")
     # Libmongoc MUST be compiled with SSL and SASL.
     libraries = ["bson-1.0", "crypto", "ssl", "sasl2", "mongoc-1.0"]
 
