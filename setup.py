@@ -1,23 +1,66 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
-
 import os
 import platform
-import re
-import subprocess
 import sys
-from distutils.core import Command
-from distutils.command.build import build
-from distutils.ccompiler import new_compiler
+import warnings
 
-# Don't force people to install setuptools unless
-# we have to.
+# Don't force people to install setuptools unless we have to.
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup
+    from setuptools import setup, Extension
+
+# Set the default location of libmongoc and libbson.
+# NOTE: Will only use the default if pkgconfig cannot find anything.
+if platform.system() == "Windows":
+    mongoc_src = os.path.join("C:/", "Program Files", "libmongoc")
+    bson_src = os.path.join("C:/", "Program Files", "libbson")
+    libraries = ["bson-1.0", "mongoc-1.0"]
+else:
+    mongoc_src = os.path.join("/opt")
+    bson_src = os.path.join("/opt")
+    # Libmongoc MUST be compiled with SSL and SASL.
+    libraries = ["bson-1.0", "crypto", "ssl", "sasl2", "mongoc-1.0"]
+
+# Check if the user specified the location.
+for s in range(len(sys.argv) - 1, -1, -1):
+    if sys.argv[s] == "--default-libmongoc":
+        mongoc_src = sys.argv[s + 1]
+        sys.argv.remove("--default-libmongoc")
+        sys.argv.remove(mongoc_src)
+    elif sys.argv[s] == "--default-libbson":
+        bson_src = sys.argv[s + 1]
+        sys.argv.remove("--default-libbson")
+        sys.argv.remove(bson_src)
+
+settings = {
+    'export_symbols': ["monary_init",
+                       "monary_cleanup",
+                       "monary_connect",
+                       "monary_disconnect",
+                       "monary_use_collection",
+                       "monary_destroy_collection",
+                       "monary_alloc_column_data",
+                       "monary_free_column_data",
+                       "monary_set_column_item",
+                       "monary_query_count",
+                       "monary_init_query",
+                       "monary_init_aggregate",
+                       "monary_load_query",
+                       "monary_close_query",
+                       "monary_create_write_concern",
+                       "monary_destroy_write_concern",
+                       "monary_insert"],
+    'sources': [os.path.join("monary", "cmonary.c")],
+    'include_dirs': [os.path.join(mongoc_src, "include", "libmongoc-1.0"),
+                     os.path.join(bson_src, "include", "libbson-1.0")],
+    'library_dirs': [os.path.join(mongoc_src, "lib"),
+                     os.path.join(bson_src, "lib")],
+    'libraries': libraries
+}
 
 test_requires = []
 test_suite = "test"
@@ -27,87 +70,52 @@ if sys.version_info[:2] == (2, 6):
 
 DEBUG = False
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
-# Hijack the build process by inserting specialized commands into
-# the list of build sub commands
-build.sub_commands = [ ("build_cmongo", None), ("build_cmonary", None) ] + build.sub_commands
-
-# Platform specific stuff
-if platform.system() == 'Windows':
-    compiler_kw = {'compiler' : 'mingw32'}
-    linker_kw = {'libraries' : ['ws2_32']}
-    so_target = 'libcmonary.dll'
-else:
-    compiler_kw = {}
-    linker_kw = {'libraries' : []}
-    so_target = 'libcmonary.so' 
-
-compiler = new_compiler(**compiler_kw)
-
-MONARY_DIR = "monary"
-CMONGO_SRC = "mongodb-mongo-c-driver-1.0.0"
 CFLAGS = ["-fPIC", "-O2"]
 
 if not DEBUG:
     CFLAGS.append("-DNDEBUG")
 
-class BuildException(Exception):
-    """Indicates an error occurred while compiling from source."""
-    pass
 
-# I suspect I could be using the build_clib command for this, but don't know how.
-class BuildCMongoDriver(Command):
-    """Custom command to build the C Mongo driver. Relies on autotools."""
-    description = "builds the C Mongo driver"
-    user_options = [ ]
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        try:
-            os.chdir(CMONGO_SRC)
-            env = os.environ.copy()
-            env.setdefault('CFLAGS', '')
-            env['CFLAGS'] += ' -fPIC'
-            status = subprocess.call(["./configure", "--enable-static",
-                                      "--without-documentation",
-                                      "--disable-maintainer-mode",
-                                      "--disable-tests", "--disable-examples"], env=env)
-            if status != 0:
-                raise BuildException("configure script failed with exit status %d" % status)
+# Use pkg-config to find location of libbson and libmongoc.
+try:
+    import pkgconfig
+except ImportError:
+    # Set to default locations for libmongoc and libbson.
+    warnings.warn(("WARNING: the python package pkgconfig is not installed. "
+                   "If you have pkg-config installed on your system, please "
+                   "install the python's pkgconfig, e.g. \"pip install "
+                   "pkgconfig\". Will use libmongoc=%s and libbson=%s instead."
+                   % (mongoc_src, bson_src)))
 
-            status = subprocess.call(["make"])
-            if status != 0:
-                raise BuildException("make failed with exit status %d" % status)
-            # after configuring, add libs to linker_kw
-            with open(os.path.join("src", "libmongoc-1.0.pc")) as f:
-                libs = re.search(r"Libs:\s+(.+)$", f.read(), flags=re.MULTILINE).group(1)
-                libs = [l[2:] for l in re.split(r"\s+", libs)[:-1] if l.startswith("-l")]
-                linker_kw["libraries"] += libs
-        finally:
-            os.chdir("..")
+else:
+    try:
+        # Use pkgconfig to find location of libmongoc or libbson.
+        if pkgconfig.exists("libmongoc-1.0"):
+            pkgcfg = pkgconfig.parse("libmongoc-1.0")
+            settings['include_dirs'] = list(pkgcfg['include_dirs'])
+            settings['library_dirs'] = list(pkgcfg['library_dirs'])
+            settings['libraries'] = list(pkgcfg['libraries'])
+            settings['define_macros'] = list(pkgcfg['define_macros'])
+        else:
+            warnings.warn(("WARNING: unable to find libmongoc-1.0 with "
+                           "pkgconfig. Please check that PKG_CONFIG_PATH is "
+                           "set to a path that can find the .pc files for "
+                           "libbson and libmongoc. Will use libmongoc=%s and "
+                           "libbson=%s instead." % (mongoc_src, bson_src)))
+    except EnvironmentError:
+        warnings.warn(("WARNING: the system tool pkg-config is not installed. "
+                      "Will use libmongoc=%s and libbson=%s instead."
+                       % (mongoc_src, bson_src)))
 
-class BuildCMonary(Command):
-    """Custom command to build the cmonary library, static linking to the cmongo drivers,
-       a producing a .so library that can be loaded via ctypes.
-    """
-    description = "builds the cmonary library (for ctypes)"
-    user_options = [ ]
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        compiler.compile([os.path.join(MONARY_DIR, "cmonary.c")],
-                         extra_preargs=CFLAGS,
-                         include_dirs=[os.path.join(CMONGO_SRC, "src", "mongoc"),
-                                       os.path.join(CMONGO_SRC, "src", "libbson", "src", "bson")])
-        compiler.link_shared_lib([os.path.join(MONARY_DIR, "cmonary.o"),
-                                  os.path.join(CMONGO_SRC, ".libs", "libmongoc-1.0.a"),
-                                  os.path.join(CMONGO_SRC, "src", "libbson", ".libs", "libbson-1.0.a")],
-                                  "cmonary", "monary", **linker_kw)
+module = Extension('monary.libcmonary',
+                   extra_compile_args=CFLAGS,
+                   include_dirs=settings['include_dirs'],
+                   libraries=settings['libraries'],
+                   library_dirs=settings['library_dirs'],
+                   export_symbols=settings['export_symbols'],
+                   sources=settings['sources'])
 
 
 # Get README info
@@ -118,20 +126,21 @@ except:
     readme_content = ""
 
 setup(
-    name = "Monary",
-    version = VERSION,
-    packages = ["monary"],
-    setup_requires = ["pymongo", "numpy"],
-    tests_require = test_requires,
-    package_dir = {"monary": "monary"},
-    package_data = {"monary": [so_target]},
+    name="Monary",
+    version=VERSION,
+    packages=["monary"],
+    setup_requires=["pymongo", "numpy"],
+    tests_require=test_requires,
+    package_dir={"monary": "monary"},
 
-    author = "David J. C. Beach",
-    author_email = "info@djcinnovations.com",
-    description = "Monary performs high-performance column queries from MongoDB.",
-    long_description = readme_content,
-    keywords = "monary pymongo mongo mongodb numpy array",
-    classifiers = [
+    ext_modules=[module],
+
+    author="David J. C. Beach",
+    author_email="info@djcinnovations.com",
+    description="Monary performs high-performance column queries on MongoDB",
+    long_description=readme_content,
+    keywords="monary pymongo mongo mongodb numpy array",
+    classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
@@ -146,11 +155,6 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Database"
     ],
-    url = "http://bitbucket.org/djcbeach/monary/",
-    test_suite = test_suite,
-
-    cmdclass = {
-        'build_cmongo': BuildCMongoDriver,
-        'build_cmonary': BuildCMonary,
-    }
+    url="http://bitbucket.org/djcbeach/monary/",
+    test_suite=test_suite,
 )
