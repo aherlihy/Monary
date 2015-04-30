@@ -1,0 +1,49 @@
+INSTALL CMAKE:
+    - Download: http://www.cmake.org/download/ CMake Win32 Binary, select *ADD TO PATH.
+
+
+INSTALL CMONGO:
+    - IN cmd.exe ADMIN command prompt:
+	> cmake -DCMAKE_INSTALL_PREFIX=C:\usr -G "Visual Studio 12 Win64" .
+		**NOTE: if you don't set PREFIX then it will install into C:\Program Files\libbson
+	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" ALL_BUILD.vcxproj
+	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" INSTALL.vcxproj
+
+    - Delete all tests and references to test in CMakefiles.txt
+
+	> cmake -DCMAKE_INSTALL_PREFIX=C:\usr -DBSON_ROOT_DIR=C:\usr -G "Visual Studio 12 Win64" .
+		**NOTE: if you didn't set PREFIX for libbson, then run
+		> cmake -DBSON_ROOT_DIR="C:\Program Files\libbson" -G "Visual Studio 12 Win64" .
+		**NOTE: if you don't set a PREFIX it will install into C:\Program Files\libmongoc
+	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" ALL_BUILD.vcxproj
+	> "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild" INSTALL.vcxproj
+
+INSTALL MONARY:
+
+    - Download: http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
+	> pip install --no-index --find-links=C:\numpy-1.9.2+mkl-cp27-none-win_amd64.whl numpy
+
+    - Download: http://www.microsoft.com/en-us/download/details.aspx?id=44266
+
+    - IN Visual C++ 2008 64-bit Cross Tools Command Prompt
+	> SET DISTUTILS_USE_SDK=1
+	> SET MSSdk=1
+	> python setup.py install --default-libmongoc C:\usr --default-libbson C:\usr
+		**NOTE: if you didn't set a prefix, you can just run python setup.py install.
+
+COMPILE CMONARY: If you want to create a shared library without Python. Note that
+    this will produce a .dll file, which in order to be used by monary.py, should be
+    renamed "libcmonary.pyd".
+
+
+    - IN Visual C++ 2008 64-bit Cross Tools Command Prompt
+       Compile:
+	> cl.exe /c /IC:/usr/include/libbson-1.0 /IC:/usr/include/libmongoc-1.0 /D_USRDLL /D_WINDLL cmonary.c 
+
+       Link:
+	> link.exe /DLL /nologo /INCREMENTAL:NO /LIBPATH:c:\Python27\libs /LIBPATH:c:\Python27\PCbuild\amd64 cmonary.obj C:\usr\lib\bson-1.0.lib C:\usr\lib\mongoc-1.0.lib /EXPORT:monary_init /EXPORT:monary_cleanup /EXPORT:monary_connect /EXPORT:monary_disconnect /EXPORT:monary_use_collection /EXPORT:monary_destroy_collection /EXPORT:monary_alloc_column_data /EXPORT:monary_free_column_data /EXPORT:monary_set_column_item /EXPORT:monary_query_count /EXPORT:monary_init_query /EXPORT:monary_init_aggregate /EXPORT:monary_load_query /EXPORT:monary_close_query /EXPORT:monary_create_write_concern /EXPORT:monary_destroy_write_concern /EXPORT:monary_insert /OUT:libcmonary.dll
+
+       Compile+link
+	> cl.exe /IC:/usr/include/libbson-1.0 /IC:/usr/include/libmongoc-1.0 /D_USRDLL /D_WINDLL cmonary.c /link C:/usr/lib/bson-1.0.lib C:/usr/lib/mongoc-1.0.lib /DLL /EXPORT:monary_init /EXPORT:monary_cleanup /EXPORT:monary_connect /EXPORT:monary_disconnect /EXPORT:monary_use_collection /EXPORT:monary_destroy_collection /EXPORT:monary_alloc_column_data /EXPORT:monary_free_column_data /EXPORT:monary_set_column_item /EXPORT:monary_query_count /EXPORT:monary_init_query /EXPORT:monary_init_aggregate /EXPORT:monary_load_query /EXPORT:monary_close_query /EXPORT:monary_create_write_concern /EXPORT:monary_destroy_write_concern /EXPORT:monary_insert /OUT:libcmonary.dll
+
+
