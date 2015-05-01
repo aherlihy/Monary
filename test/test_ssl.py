@@ -27,11 +27,12 @@ try:
         global_coll = global_client.test.ssl
         global_coll.drop()
         global_coll.insert({'x1': 0.0})
-except pymongo.errors.ConnectionFailure as global_e:
-    if "SSL handshake failed" in str(global_e):
-        ssl_err = "Can't connect to mongod with SSL: " + str(global_e)
+except pymongo.errors.ConnectionFailure as globl_e:
+    if ("SSL handshake failed" in str(
+            globl_e) or "forcibly closed by the remote host" in str(globl_e)):
+        ssl_err = "Can't connect to mongod with SSL: " + str(globl_e)
     else:
-        raise RuntimeError("Unable to connect to mongod: ", str(global_e))
+        raise RuntimeError("Unable to connect to mongod: ", str(globl_e))
 
 
 @unittest.skipIf(ssl_err, ssl_err)

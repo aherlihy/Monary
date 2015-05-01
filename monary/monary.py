@@ -4,7 +4,7 @@
 import atexit
 import copy
 import ctypes
-import os.path
+import os
 import platform
 import sys
 
@@ -59,16 +59,23 @@ def _load_cmonary_lib():
     this module).
     """
     global cmonary
-    thismodule = __file__
-    abspath = os.path.abspath(thismodule)
-    moduledir = list(os.path.split(abspath))[:-1]
+    moduledir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if platform.system() == 'Windows':
-        ctypes.CDLL(os.path.join(*(moduledir + ['libbson-1.0.dll'])))
-        ctypes.CDLL(os.path.join(*(moduledir + ['libmongoc-1.0.dll'])))
-        cmonary_fname = "libcmonary.dll"
+        cmonary_fname = "libcmonary.pyd"
     else:
         cmonary_fname = "libcmonary.so"
-    cmonaryfile = os.path.join(*(moduledir + [cmonary_fname]))
+
+    cmonaryfile = None
+
+    for root, dirs, files in os.walk(moduledir):
+        for basename in files:
+            if basename == cmonary_fname:
+                cmonaryfile = os.path.join(root, basename)
+                break
+    if cmonaryfile is None:
+        raise RuntimeError("Unable to find cmonary shared library: ",
+                           cmonary_fname)
+
     cmonary = ctypes.CDLL(cmonaryfile)
 
 _load_cmonary_lib()

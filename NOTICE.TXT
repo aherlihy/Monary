@@ -25,9 +25,4 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-This software includes a copy of MongoDB C Driver from 10gen, located in
-the "mongodb-mongo-c-driver-xxxxxxxx" directory.  For licensing information
-on this included, please see the APACHE-2.0.txt and README files in the
-associated directory.
-
-All other files are Copyright David J. C. Beach, as indicated above.
+All files are Copyright David J. C. Beach, as indicated above.
