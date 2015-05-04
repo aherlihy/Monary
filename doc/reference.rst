@@ -163,27 +163,6 @@ the MongoDB Write Concern options.
     `The MongoDB manual entry on Write Concern
     <http://docs.mongodb.org/manual/reference/write-concern/>`_
 
-w
--
-The w option provides the ability to disable write concern entirely as well as specify the write concern for `replica sets
-<http://docs.mongodb.org/manual/reference/glossary/#term-replica-set>`_.
-
-The only acceptable values are:
-
- - ``MONARY_W_ERRORS_IGNORED``: Disables basic acknowledgment of write
-   operations, but returns information about socket exceptions and networking
-   errors.
- - ``MONARY_W_DEFAULT``: Provides acknowledgment of write operations on a
-   standalone mongod or the primary in a replica set. This value can be though
-   of as identical to ``w=1``.
- - ``MONARY_W_MAJORITY``: Confirms that write operations have propagated to the
-   majority of configured replica set members. This allows you to avoid hard
-   coding assumptions about the size of your replica set into your application.
- - ``MONARY_W_TAG`` : This value must be used if and only if you are specifying
-   a write concern tag set.
- - ``[0 or more]`` : Guarantees that write operations have propagated
-   successfully to the specified number of replica set members including the
-   primary.
 
 wtimeout
 --------
@@ -206,11 +185,6 @@ wjournal
 The ``wjournal`` option confirms that the mongod instance has written the data
 to the on-disk journal. This ensures that data is not lost if the mongod
 instance shuts down unexpectedly. Set to ``True`` to enable.
-
-wfsync
-------
-The ``wfsync`` option confirms that the mongod instance has called ``fsync()``
-before acknowledging the write request. Set to ``True`` to enable.
 
 wtag
 ----

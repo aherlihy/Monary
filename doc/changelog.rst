@@ -3,9 +3,11 @@ Changelog
 
 Changes in Version 0.4.0
 ------------------------
-- Remove vendoring of libmongoc - users **must** install libmongoc independently.
+- Remove vendoring of libmongoc - users **must** install libmongoc 1.0 or later independently.
 - Improved error handling and error reporting.
 - Improved Testing: tests can be run through ``setup.py test``; added skiptest; removed dependency on Nose.
+- Inserts.
+- Connection over SSL.
 - Various bugfixes.
 
 

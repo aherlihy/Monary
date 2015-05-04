@@ -1,7 +1,7 @@
 Query Example
 =============
 
-This example shows you how to use Monary's ``query`` command.
+This example shows you how to use Monary's ``query`` method.
 
 Setup
 -----

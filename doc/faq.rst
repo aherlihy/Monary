@@ -79,6 +79,18 @@ end up looking like this::
                  mask = [False False False ..., False False False],
            fill_value = ???)
 
+Or it may look like this::
+
+    [masked_array(data = [<read-write buffer ptr 0x7f93718a3600, size 12 at 0x1094e1df0>
+    <read-write buffer ptr 0x7f93718a360c, size 12 at 0x1094e1d70>
+    <read-write buffer ptr 0x7f93718a3618, size 12 at 0x1094e1f70> ...,
+    <read-write buffer ptr 0x7f93718b4f1c, size 12 at 0x1097b92b0>
+    <read-write buffer ptr 0x7f93718b4f28, size 12 at 0x1097b92f0>
+    <read-write buffer ptr 0x7f93718b4f34, size 12 at 0x1097b9330>],
+             mask = [False False False ..., False False False],
+       fill_value = ???)
+    ]
+
 If you would like this as a ``bson.objectid.ObjectId``, it can be done like
 this::
 
@@ -87,7 +99,8 @@ this::
     ...     ids = m.query("db", "col", {}, ["_id"], ["id"])
 
     >>> from monary.monary import mvoid_to_bson_id
-    >>> oids = list(map(mvoid_to_bson_id, ids))
+    >>> id_vals = ids[0] # Depends on the type of query.
+    >>> oids = list(map(mvoid_to_bson_id, id_vals))
     >>> oids[0]
     ObjectId('53dba51e61155374af671dc1')
 

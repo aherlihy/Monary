@@ -30,8 +30,12 @@ in the data arrays. For example, the monary command::
 
 Purpose of Remove
 -----------------
-Monary's "bulk" removes are different than regular MongoDB removes in that they
-perform many MongoDB removes at once. This gives you a fast way to remove large
+Monary's "bulk" removes are slightly different from regular MongoDB removes.
+Regular removes can remove large amounts of data but they can only use one
+*query* at a time. With Monary, we can match documents in MongoDB to
+values from a NumPy array and remove all matching documents in one round trip.
+In the example below, we load many document ids into an array and remove all the
+documents with those ids in one large batch This gives you a fast way to remove large
 amounts of data with one command, while still having fine grained control over
 what is removed.
 
@@ -77,7 +81,7 @@ we started with this example. Then, we can do this with Monary like so::
     >>> arr += 80.0
     >>> mask = np.zeros(len(arr), dtype="bool")
     >>> arr = np.ma.masked_array(arr, mask)
-    >>> mp = MonarParam(arr, "score.$lt")
+    >>> mp = MonaryParam(arr, "score.$lt")
     >>> num_removed = client.remove("scores", "data", [ids, mp])
     >>> num_removed
     7974

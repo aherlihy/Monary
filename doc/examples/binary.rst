@@ -73,7 +73,7 @@ Finding Binary Data
 -------------------
 To query binary data, Monary requires the size of the binary to load in. Since
 the data in different documents can be of different sizes, we need to use the
-size of the biggest binary blob to avoid a loss of data.
+size of the biggest binary blob to avoid truncation.
 
 To find the size of the data in bytes, we use the ``size`` type::
 

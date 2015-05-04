@@ -1,28 +1,44 @@
 MonaryParam Example
 ===================
 
-A ``MonaryParam`` is used to store data, the data's associated monary type, and
-a corresponding field name. If, for example, you want to insert documents from
-the masked array ``vals`` of the type ``int64``, and you wanted these to be the
-value associated with the key ``foo``, you would create a ``MonaryParam`` as
-follows::
+A ``MonaryParam`` represents a single column, i.e. a single field, in a set of
+BSON documents. It contains three pieces of data: the name of the field it
+represents, the type of the data stored in that field, and the values of the
+field itself. For example, say you had a set of 12 documents that all contained
+the field "count" with the values 1-12::
 
-    >>> from monary import MonaryParam
-    >>> p = MonaryParam(vals, "foo", "int64")
+    >>> import numpy as np
+    >>> count_field = "count"
+    >>> count_type = "int64"
+    >>> count_values = np.ma.masked_array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+
+If you wanted to make a MonaryParam that represented the field ``count``, you could::
+
+   >>> from monary import MonaryParam
+   >>> mp = MonaryParam(count_values, count_field, count_type)
 
 Or, because some types can be determined by the type of the NumPy masked array,
 you could simply call::
 
-    >>> p = MonaryParam(vals, "foo")
+    >>> p = MonaryParam(count_values, count_field)
 
 .. seealso::
 
     :ref:`The Type section in the Reference <type-reference>`
 
-If you have a list of masked arrays, and you have a list of what fields you
-want them associated with, you can make a list of MonaryParams like this::
+If you wanted to represent a few different fields, you can create a set of
+MonaryParams using lists. Say you have another field, ``month``, in your
+set of 12 BSON documents::
 
-    >>> vals = [int_arr, bool_arr, id_arr]
-    >>> fields = ["foo", "bar", "baz"]
-    >>> types = ["int32", "bool", "id"]
-    >>> params = MonaryParam.from_lists(vals, fields, types)
+    >>> month_field = "month"
+    >>> month_type = "string:9"
+    >>> month_values = np.ma.masked_array(["january", "february", "march", "april", "may",
+    ...                                     "june", "july", "august", "september", "october",
+    ...                                     "november", "december"])
+
+You can create multiple MonaryParams using ``from_lists``::
+
+    >>> fields = [count_field, month_field]
+    >>> types = [count_type, month_type]
+    >>> values = [count_values, month_values]
+    >>> params = MonaryParam.from_lists(values, fields, types)

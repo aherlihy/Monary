@@ -1,50 +1,75 @@
 Insert Example
 ==============
 
-This example shows you how to use Monary's ``insert`` command to send documents
+This example shows you how to use Monary's ``insert`` method to send documents
 to MongoDB.
 
-Any value that can be queried can also be inserted except for ``type``,
-``length``, and ``size``. Both nested field insertion (via fields containing
-".") and BSON value insertion are supported as well.
+Any value that can be queried can also be inserted. Both nested field insertion
+(via fields containing ".") and BSON value insertion are supported as well.
 
 Purpose of Insert
 -----------------
-Inserts allow you to use Monary to convert data from NumPy Masked arrays into
-documents stored in MongoDB.
+Inserts allow you to use Monary to convert data from NumPy masked arrays into
+documents stored in MongoDB. Monary's insert takes in a list of
+``MonaryParams``.
 
-Monary inserts can also be used to store intermediate data in the middle of
-intense computations. This can be useful when doing operations on blocks of
-data with :doc:`block query </examples/block-query>`.
+Monary inserts can also be used to store intermediate data. This can be
+useful when doing operations on blocks of data with :doc:`block query </examples/block-query>`.
 
 Setup
 -----
-For this example, let's use PyMongo to put some unprocessed documents
-representing students' test scores into MongoDB. First, we can set up a
-connection to the local MongoDB database::
+For this example, let's insert some unprocessed documents representing students'
+test scores into MongoDB. Please see the
+:doc:`MonaryParam</examples/monary-param>` example to understand how to
+create a ``MonaryParam``.
 
-    >>> from pymongo import MongoClient
-    >>> client = MongoClient()
+First we need to connect to our local DB::
 
-Next, we generate the documents::
+    >>> import monary
+    >>> client = monary.Monary()
 
+Next, we generate the documents. Note that we are using ``bson.encode`` to
+store our subdocument::
+
+    >>> import bson
     >>> import random
     >>> al_num = '0123456789abcdefghijklmnopqrstuvwxyz'
-    >>> client.drop_database("monary_students")
+    >>> scores = []
+    >>> ids = []
+    >>> names = []
     >>> for _ in range(1000):
-    ...     student_id = "".join(al_num[random.randint(0, len(al_num)-1)]
-    ...                          for _ in range(14))
-    ...     student = {"student_id": student_id,
-    ...                "test_scores":
-    ...                    {"midterm": random.randint(0, 1000) / 10,
-    ...                     "final_exam": random.randint(0, 1000) / 10},
-    ...                "name": "..."}
-    ...     client.monary_students.raw.insert(student)
+    ...     ids.append("".join(al_num[random.randint(0, len(al_num)-1)]
+    ...                          for _ in range(14)))
+    ...     score = {"midterm": random.randint(0, 1000) / 10,
+    ...              "final": random.randint(0, 1000) / 10}
+    ...     scores.append(bson.BSON.encode(score))
+    ...     names.append("...")
 
+Now that we have generated documents, we need to construct a ``MonaryParam``.
+``MonaryParams`` represent one column, i.e. one field, for a set of BSON documents.
+We need the data itself to be in numpy's masked_array type::
+
+    >>> import numpy as np
+    >>> max_length = max(map(len, scores))
+    >>> scores_ma = np.ma.masked_array(scores, np.zeros(1000), "<V%d"%max_length)
+    >>> ids_ma = np.ma.masked_array(ids, np.zeros(1000), "S14")
+    >>> names_ma = np.ma.masked_array(names, np.zeros(1000), "S3")
+
+Now we can create a ``MonaryParam``::
+
+    >>> types = ["bson:%d"%max, "string:14", "string:3"]
+    >>> fields = ["scores", "student_id", "student_name"]
+    >>> values = [scores_ma, ids_ma, names_ma]
+    >>> params = monary.MonaryParam.from_lists(values, fields, types)
+
+And we can insert it into the database "monary_students", and the collection "raw"::
+
+    >>> client.insert("monary_students", "raw", params)
 
 Using Monary Insert
 -------------------
-Let's first get all the raw test data into NumPy arrays with Monary::
+The semester has ended, and it's time to assign grades to each student.
+Let's first get all the raw test data back into NumPy arrays with Monary::
 
     >>> import numpy as np
     >>> from monary import Monary

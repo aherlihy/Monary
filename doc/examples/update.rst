@@ -4,11 +4,9 @@ Update Example
 This example shows you how to use Monary's ``update`` command to modify
 documents already in MongoDB.
 
-Any values that can be used to form a "selectors" for remove can also form be
-used to form selectors for update. Similarly any values used to form documents
-for insert can be used to from documents for update.
+Any value that can be used for insert or remove, can be used in update.
 
-Similarly to :doc:`remove </examples/remove>` a single Monary update command
+Similar to :doc:`remove </examples/remove>`, a single Monary update command
 runs a MongoDB update commands for each element in the data arrays.
 
 .. seealso::

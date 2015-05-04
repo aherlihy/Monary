@@ -1,6 +1,6 @@
 Connection Example
 ------------------
-To use **Monary**, we need to create a connection to a running **mongod**
+To use Monary, we need to create a connection to a running ``mongod``.
 instance. To connect to a MongoDB server, we simply make a new Monary object.
 The default host and port are ``"localhost"`` and ``27017`` respectively. This
 will connect to the default host and port::
