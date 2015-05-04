@@ -19,8 +19,6 @@ started by issuing the following in a shell::
     aggregation
     monary-param
     insert
-    remove
-    update
     timestamp
     string
     binary
