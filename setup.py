@@ -129,6 +129,7 @@ setup(
     name="Monary",
     version=VERSION,
     packages=["monary"],
+    install_requires=["pymongo", "numpy"],
     setup_requires=["pymongo", "numpy"],
     tests_require=test_requires,
     package_dir={"monary": "monary"},
