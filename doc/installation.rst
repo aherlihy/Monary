@@ -18,6 +18,8 @@ command::
 
 Before you install Monary, you need to have the MongoDB C Driver installed.
 
+If you are installing on Windows, there are some hints in windows_install.txt
+
 Installing CMongo
 -----------------
 Monary requires the MongoDB C Driver. To install the C driver, you can
@@ -91,29 +93,15 @@ To upgrade:
 
     $ easy_install -U monary
 
-Installing on Windows
----------------------
-Monary provides Python eggs pre-compiled for Windows distributions. First you
-must `install easy_install
-<http://simpledeveloper.com/how-to-install-easy_install/>`_. To install Monary,
-download `the latest monary egg
-<https://testpypi.python.org/packages/2.7/M/Monary/Monary-0.4.0-py2.7.egg>`_.
-Then from the command line, ``cd`` to where the egg file was downloaded and
-type:
+Installing with Wheels
+----------------------
+Monary provides Python wheels for Windows and OSX. If you install from wheels,
+**libmongoc must be installed in a default location**. Download the wheel and
+install with::
 
-.. code-block:: bash
+    $ pip install wheel
+    $ pip install monary-wheel.whl
 
-    $ easy_install Monary-0.4.0-py2.7.egg
- 
-If you are planning on doing development on Windows or want to build it from
-source, there are instructions in windows_instructions.txt, which can be found
-in the source distribution. These have been tested on 64-bit Windows using 
-Visual Studio 2013.
-
-
-Installing on OSX
------------------
-Monary provides Python wheels that can be installed directly on OSX.
 
 Installing on Other Unix Distributions
 --------------------------------------
