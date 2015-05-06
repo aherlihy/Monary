@@ -1,7 +1,7 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import numpy
+import numpy as np
 import pymongo
 
 import monary
@@ -16,19 +16,38 @@ class TestBlockAggregation(unittest.TestCase):
     def setUpClass(cls):
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
-            for i in range(NUM_TEST_RECORDS):
-                if i % 2 == 0:
-                    doc = {
-                        "_id": i,
-                        "a": 0,
-                    }
-                else:
-                    doc = {
-                        "_id": i,
-                        "b": 1,
-                    }
-                doc["data"] = i % 3
-                c.monary_test.data.insert(doc)
+
+        a_elem = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS / 2),
+                                    np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        b_elem = np.ma.masked_array(np.ones(NUM_TEST_RECORDS / 2),
+                                    np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        a_ids = np.ma.copy(a_elem)
+        b_ids = np.ma.copy(a_elem)
+        a_data = np.ma.copy(a_elem)
+        b_data = np.ma.copy(a_elem)
+
+        c = 0
+        for i in range(NUM_TEST_RECORDS):
+            if i % 2 == 0:
+                a_ids[c] = i
+                a_data[c] = i % 3
+            else:
+                b_ids[c] = i
+                b_data[c] = i % 3
+                c += 1
+
+        a_param = monary.MonaryParam.from_lists(
+            [a_elem, a_ids, a_data],
+            ["a", "_id", "data"],
+            ["int32", "int32", "int32"])
+        b_param = monary.MonaryParam.from_lists(
+            [b_elem, b_ids, b_data],
+            ["b", "_id", "data"],
+            ["int32", "int32", "int32"])
+
+        with monary.Monary() as m:
+            m.insert("monary_test", "data", a_param)
+            m.insert("monary_test", "data", b_param)
 
     @classmethod
     def tearDownClass(cls):
@@ -49,11 +68,11 @@ class TestBlockAggregation(unittest.TestCase):
     def test_group(self):
         pipeline = [{"$group": {"_id": "$data"}}, {"$sort": {"_id": 1}}]
         result = self.aggregate_monary_column("_id", "int32", pipeline)
-        expected = numpy.array([0, 1, 2])
+        expected = np.array([0, 1, 2])
         assert (expected == result).all()
 
     def test_project(self):
         pipeline = [{"$project": {"b": 1, "_id": 0}}]
         result = self.aggregate_monary_column("b", "int32", pipeline)
-        assert numpy.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
+        assert np.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
         assert result.sum() == NUM_TEST_RECORDS / 2

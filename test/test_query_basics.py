@@ -1,6 +1,7 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
+import numpy as np
 import pymongo
 
 import monary
@@ -15,15 +16,28 @@ class TestQueryBasics(unittest.TestCase):
     def setUpClass(cls):
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
-            db = c.monary_test
-            coll = db.test_data
-            records = []
-            for i in range(NUM_TEST_RECORDS):
-                r = {"_id": i}
-                if (i % 2) == 0:
-                    r['x'] = 3
-                records.append(r)
-            coll.insert(records, safe=True)
+
+        ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS / 2),
+                                 np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        ids_x = np.ma.copy(ids)
+        x = np.ma.masked_array([3] * (NUM_TEST_RECORDS / 2),
+                               np.zeros(NUM_TEST_RECORDS / 2),
+                               "int32")
+        c = 0
+        for i in range(NUM_TEST_RECORDS):
+            if i % 2 == 0:
+                ids_x[c] = i
+            else:
+                ids[c] = i
+                c += 1
+        x_param = monary.MonaryParam.from_lists([ids_x, x],
+                                                ["_id", "x"],
+                                                ["int32", "int32"])
+        param = monary.MonaryParam.from_lists([ids], ["_id"], ["int32"])
+
+        with monary.Monary() as m:
+            m.insert("monary_test", "test_data", x_param)
+            m.insert("monary_test", "test_data", param)
 
     @classmethod
     def tearDownClass(cls):
