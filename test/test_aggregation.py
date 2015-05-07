@@ -49,7 +49,6 @@ class TestAggregation(unittest.TestCase):
             m.insert("monary_test", "data", a_param)
             m.insert("monary_test", "data", b_param)
 
-
     @classmethod
     def tearDownClass(cls):
         with pymongo.MongoClient() as c:

@@ -40,7 +40,6 @@ class TestBlockQuery(unittest.TestCase):
             m.insert("monary_test", "test_data", x_param)
             m.insert("monary_test", "test_data", param)
 
-
     @classmethod
     def tearDownClass(cls):
         with pymongo.MongoClient() as c:

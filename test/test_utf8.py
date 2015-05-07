@@ -14,6 +14,7 @@ from test import db_err, unittest
 @unittest.skipIf(db_err, db_err)
 class TestUTF8(unittest.TestCase):
     expected = ["aあ", "âéÇ", "αλΩ", "çœ¥¨≠"]
+
     @classmethod
     def setUpClass(cls):
         with pymongo.MongoClient() as c:
