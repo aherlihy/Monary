@@ -46,7 +46,7 @@ class TestColumnTypes(unittest.TestCase):
         string_ma = ma("S6")
         binary_ma = np.ma.masked_array(["".encode('utf-8')]*NUM_TEST_RECORDS,
                                        np.zeros(NUM_TEST_RECORDS),
-                                       "<V6")
+                                       "<V5")
         #list_ma = #TODO: FIX
         doc_ma = np.ma.masked_array(["".encode('utf-8')]*NUM_TEST_RECORDS,
                                        np.zeros(NUM_TEST_RECORDS),
@@ -72,39 +72,37 @@ class TestColumnTypes(unittest.TestCase):
             timestamp_ma[i] = bson.timestamp.Timestamp(
                 time=random.randint(0, 1000000),
                 inc=random.randint(0, 1000000)).time
-            s ="".join(chr(ord('A') + random.randint(0, 25))
-                              for i in range(random.randint(1, 5)))
-            print " S =", s, len(s)
-            string_ma[i] = s
-            print "[i]=", string_ma[i], len(string_ma[i])
+            string_ma[i] ="".join(chr(ord('A') + random.randint(0, 25))
+                              for i in range(random.randint(1, 5))).encode('ascii')
             binary_ma[i] = bson.binary.Binary(binary)
             #intlist_ma[i] =[random.randint(0, 100)
             #            for i in range(random.randint(1, 5))],
             doc = dict(subkey=random.randint(0, 255))
             doc_ma[i] = bson.BSON.encode(doc)
-            cls.records.append(dict(sequence=seq_ma[i], intval=int_ma[i],
+            cls.records.append(dict(_id=i,
+                                    sequence=seq_ma[i], intval=int_ma[i],
                                     uintval=uint_ma[i], floatval=float_ma[i],
                                     boolval=bool_ma[i], dateval=date_ma[i],
                                     timestampval=timestamp_ma[i],
                                     stringval=string_ma[i],
-                                    binaryval=binary_ma[i],
+                                    binaryval=binary,
                                     #intlistval=,
                                     subdocumentval=doc))
-
         param = monary.MonaryParam.from_lists(
             [seq_ma, int_ma, uint_ma, float_ma, bool_ma, date_ma,
              timestamp_ma, string_ma, binary_ma, doc_ma],
             ["sequence", "intval", "uintval", "floatval", "boolval", "dateval",
              "timestampval", "stringval", "binaryval", "subdocumentval"],
             ["int32", "int32", "uint32", "float64", "bool", "int64",
-             "uint64", "string:6", "binary:6", "bson:100"])
+             "uint64", "string:6", "binary:5", "bson:100"])
         with monary.Monary() as m:
             m.insert("monary_test", "test_data", param)
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        #with pymongo.MongoClient() as c:
+        #    c.drop_database("monary_test")
+        pass
 
     def get_record_values(self, colname):
         return [r[colname] for r in self.records]
@@ -146,11 +144,13 @@ class TestColumnTypes(unittest.TestCase):
         for coltype in ["float32", "float64"]:
             yield self.check_float_column, coltype
 
-    #def test_id_column(self):
-    #    column = self.get_monary_column("_id", "id")
-    #    data = list(map(monary.monary.mvoid_to_bson_id, column))
-    #    expected = self.get_record_values("_id")
-    #    assert data == expected
+    def test_id_column(self):
+       column = self.get_monary_column("_id", "id")
+       data = list(map(monary.monary.mvoid_to_bson_id, column))
+       expected = self.get_record_values("_id")
+       print "DATA=", data
+       print "EXPECTED=", expected
+       assert data == expected
 
     def test_bool_column(self):
         data = self.get_monary_column("boolval", "bool")
@@ -175,20 +175,20 @@ class TestColumnTypes(unittest.TestCase):
                     for s in self.get_record_values("stringval")]
         assert data == expected
 
-    # def test_binary_column(self):
-    #     if PY3:
-    #         # Python 3.
-    #         data = [bytes(x)
-    #                 for x in self.get_monary_column("binaryval", "binary:5")]
-    #         expected = [bytes(b)[:5]
-    #                     for b in self.get_record_values("binaryval")]
-    #     else:
-    #         # Python 2.6 / 2.7.
-    #         data = [str(x)
-    #                 for x in self.get_monary_column("binaryval", "binary:5")]
-    #         expected = [str(b)
-    #                     for b in self.get_record_values("binaryval")]
-    #     assert data == expected
+    def test_binary_column(self):
+        if PY3:
+            # Python 3.
+            data = [bytes(x)
+                    for x in self.get_monary_column("binaryval", "binary:5")]
+            expected = [bytes(b)[:5]
+                        for b in self.get_record_values("binaryval")]
+        else:
+            # Python 2.6 / 2.7.
+            data = [str(x)
+                    for x in self.get_monary_column("binaryval", "binary:5")]
+            expected = [str(b)
+                        for b in self.get_record_values("binaryval")]
+        assert data == expected
 
     def test_nested_field(self):
         data = self.get_monary_column("subdocumentval.subkey", "int32")
@@ -255,9 +255,7 @@ class TestColumnTypes(unittest.TestCase):
 
     def test_string_size_column(self):
         data = self.get_monary_column("stringval", "size")
-        expected = [len(x) for x in self.get_record_values("stringval")]
-        print "DATA=", data
-        print "EXPECTED=", expected
+        expected = [6] * NUM_TEST_RECORDS
         assert data == expected
 
     # #def test_list_size_column(self):
@@ -273,7 +271,7 @@ class TestColumnTypes(unittest.TestCase):
                     for record in self.get_record_values("subdocumentval")]
         assert data == expected
 
-    # def test_binary_size_column(self):
-    #     data = self.get_monary_column("binaryval", "size")
-    #     expected = [len(x) for x in self.get_record_values("binaryval")]
-    #     assert data == expected
+    def test_binary_size_column(self):
+        data = self.get_monary_column("binaryval", "size")
+        expected = [len(x) for x in self.get_record_values("binaryval")]
+        assert data == expected
