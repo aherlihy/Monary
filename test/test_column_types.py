@@ -24,7 +24,6 @@ class TestColumnTypes(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-
         random.seed(1234)  # For reproducibility.
 
         def ma(typ):
@@ -64,8 +63,8 @@ class TestColumnTypes(unittest.TestCase):
             uint_ma[i] = random.randint(0, 255)
             float_ma[i] = random.uniform(-1e30, 1e30)
             bool_ma[i] = (i % 2 == 0)
-            date_ma[i] = (datetime.datetime(1970, 1, 1) -
-                          datetime.datetime.now()).total_seconds()
+            date = datetime.datetime(1970, 1, 1) - datetime.datetime.now()
+            date_ma[i] = date.days * 1440 + date.seconds // 60
             timestamp_ma[i] = bson.timestamp.Timestamp(
                 time=random.randint(0, 1000000),
                 inc=random.randint(0, 1000000)).time
