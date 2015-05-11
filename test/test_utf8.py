@@ -17,7 +17,7 @@ class TestUTF8(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
         if sys.version_info[0] >= 3:
             # Python 2: convert from str to unicode.
@@ -34,7 +34,7 @@ class TestUTF8(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_utf8(self):
         with monary.Monary() as m:

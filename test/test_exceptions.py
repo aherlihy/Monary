@@ -11,12 +11,12 @@ class TestExceptions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_get_monary_numpy_type1(self):
         with self.assertRaisesRegexp(

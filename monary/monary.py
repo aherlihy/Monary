@@ -970,7 +970,7 @@ class Monary(object):
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
 
-    def dropCollection(self, db, coll):
+    def drop_collection(self, db, coll):
         """Drops the collection specified by db, coll.
 
            :param db: The name of the database.

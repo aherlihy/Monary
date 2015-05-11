@@ -1,6 +1,6 @@
 import os
 
-import pymongo
+import numpy as np
 
 import monary
 from test import db_err, unittest
@@ -20,16 +20,17 @@ global_client_pem = os.path.join(global_cert_path, 'client.pem')
 global_ca_pem = os.path.join(global_cert_path, 'ca.pem')
 
 try:
-    with pymongo.MongoClient("mongodb://localhost:27017/?ssl=true",
-                             ssl=True,
-                             ssl_certfile=global_client_pem,
-                             ssl_ca_certs=global_ca_pem) as global_client:
-        global_coll = global_client.test.ssl
-        global_coll.drop()
-        global_coll.insert({'x1': 0.0})
-except pymongo.errors.ConnectionFailure as globl_e:
-    if ("SSL handshake failed" in str(
-            globl_e) or "forcibly closed by the remote host" in str(globl_e)):
+    with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                       pem_file=global_client_pem,
+                       ca_file=global_ca_pem,
+                       ca_dir=global_cert_path,
+                       weak_cert_validation=False) as mnr:
+        mnr.drop_collection("test", "ssl")
+        gparam = monary.MonaryParam.from_lists(
+            [np.ma.masked_array([0], [0], "float64")], ["x1"], ["float64"])
+        mnr.insert("test", "ssl", gparam)
+except monary.monary.MonaryError as globl_e:
+    if "Failed to handshake and validate TLS certificate" in str(globl_e):
         ssl_err = "Can't connect to mongod with SSL: " + str(globl_e)
     else:
         raise RuntimeError("Unable to connect to mongod: ", str(globl_e))
@@ -40,11 +41,12 @@ class TestSSLCert(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient("mongodb://localhost:27017/?ssl=true",
-                                 ssl=True,
-                                 ssl_certfile=global_client_pem,
-                                 ssl_ca_certs=global_ca_pem) as c:
-            c.drop_database("test")
+        with monary.Monary("mongodb://localhost:27017/?ssl=true",
+                           pem_file=global_client_pem,
+                           ca_file=global_ca_pem,
+                           ca_dir=global_cert_path,
+                           weak_cert_validation=False) as m:
+            m.drop_collection("test", "ssl")
 
     def test_all(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=true",
@@ -110,15 +112,16 @@ class TestNoSSL(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient() as client:
-            collection = client.test.ssl
-            collection.drop()
-            collection.insert({'x1': 0.0})
+        with monary.Monary() as m:
+            m.drop_collection("test", "ssl")
+            param = monary.MonaryParam.from_lists(
+                [np.ma.masked_array([0], [0], "float64")], ["x1"], ["float64"])
+            m.insert("test", "ssl", param)
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("test")
+        with monary.Monary() as m:
+            m.drop_collection("test", "ssl")
 
     def test_ssl_false_no_ssl(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=false",

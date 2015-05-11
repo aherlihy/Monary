@@ -12,10 +12,10 @@ import monary
 db_err = ""
 try:
     with monary.Monary() as m:
-        m.dropCollection("monary_test", "data")
+        m.drop_collection("monary_test", "data")
 except monary.monary.MonaryError as ex:
     if "Failed to read 4 bytes" in str(ex):
-         db_err = ("Cannot connect to mongod (maybe SSL is turned on?): " +
-                   str(ex))
+        db_err = ("Cannot connect to mongod (maybe SSL is turned on?): " +
+                  str(ex))
     else:
         raise RuntimeError("Cannot connect to mongod: " + str(ex))

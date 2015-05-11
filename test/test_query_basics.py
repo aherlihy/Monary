@@ -14,7 +14,7 @@ class TestQueryBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
         ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
                                  np.zeros(NUM_TEST_RECORDS // 2), "int32")
@@ -41,7 +41,7 @@ class TestQueryBasics(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def get_monary_column(self, colname, coltype):
         with monary.Monary("127.0.0.1") as m:

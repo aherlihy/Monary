@@ -25,7 +25,7 @@ class TestColumnTypes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
         random.seed(1234)  # For reproducibility.
 
@@ -110,7 +110,7 @@ class TestColumnTypes(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def get_record_values(self, colname):
         return [r[colname] for r in self.records]

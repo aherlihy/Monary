@@ -64,7 +64,7 @@ class TestInserts(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
         random.seed(1234)  # For reproducibility.
 
@@ -169,7 +169,7 @@ class TestInserts(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_insert_and_retrieve_no_types(self):
         params = monary.MonaryParam.from_lists(
@@ -191,7 +191,7 @@ class TestInserts(unittest.TestCase):
                 self.assertEqual(data.count(), expected.count())
                 self.assertTrue((data == expected).all())
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_insert_and_retrieve(self):
         arrays = (self.TYPE_INFERABLE_ARRAYS +
@@ -231,7 +231,7 @@ class TestInserts(unittest.TestCase):
                     expected = np.array([True])
                 self.assertTrue((data == expected).all())
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_oid(self):
         with monary.Monary() as m:
@@ -267,7 +267,7 @@ class TestInserts(unittest.TestCase):
                 self.assertEqual(monary.mvoid_to_bson_id(d),
                                  monary.mvoid_to_bson_id(e))
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_insert_field_validation(self):
         good = [
@@ -338,11 +338,11 @@ class TestInserts(unittest.TestCase):
                 self.assertNotIn("fake", xs[index]["y"])
                 self.assertEqual(unmasked[index], xs[index]["y"]["real"])
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_retrieve_nested(self):
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
         arrays = [self.bool_arr, self.int8_arr, self.int16_arr, self.int32_arr,
                   self.int64_arr, self.float32_arr, self.float64_arr,
                   self.string_arr, self.seq]
@@ -377,7 +377,7 @@ class TestInserts(unittest.TestCase):
                         else:
                             self.assertEqual(data[i][key], arrays[j][i])
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_insert_bson(self):
         docs = []
@@ -412,7 +412,7 @@ class TestInserts(unittest.TestCase):
             self.assertEqual(array[1][i], self.seq[i])
 
         with monary.Monary() as m:
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_custom_id(self):
         f_unmasked = np.ma.masked_array(
@@ -454,7 +454,7 @@ class TestInserts(unittest.TestCase):
             self.assertEqual(len(data), NUM_TEST_RECORDS)
             self.assertTrue((data == f_unmasked).all())
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
     def test_insert_errors(self):
         with monary.Monary() as m:
@@ -471,7 +471,7 @@ class TestInserts(unittest.TestCase):
             self.assertEqual(len(b_id), len(b))
             self.assertEqual(b_id.count(), len(b) - len(a))
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
 
             # ``threes`` is a list of numbers counting up by 3, i.e. 0 3 6 ...
             num_threes = int(NUM_TEST_RECORDS / 3) + 1
@@ -496,4 +496,4 @@ class TestInserts(unittest.TestCase):
             self.assertFalse(ids.mask[1::3].any())
             self.assertFalse(ids.mask[2::3].any())
 
-            m.dropCollection("monary_test", "data")
+            m.drop_collection("monary_test", "data")
