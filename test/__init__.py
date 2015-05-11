@@ -3,7 +3,7 @@ try:
 except ImportError:
     import unittest
 
-import pymongo
+import monary
 
 # In order to skip tests on Python 2.6 must use @unittest.skipIf(...) so tests
 # to see if the DB is running need to happen at global scope. Tests will skip
@@ -11,11 +11,11 @@ import pymongo
 # message is "connection refused".
 db_err = ""
 try:
-    with pymongo.MongoClient() as cx:
-        cx.drop_database("monary_test")
-except pymongo.errors.ConnectionFailure as ex:
-    if "connection closed" in str(ex):
-        db_err = ("Cannot connect to mongod (maybe SSL is turned on?): " +
-                  str(ex))
+    with monary.Monary() as m:
+        m.dropCollection("monary_test", "data")
+except monary.monary.MonaryError as ex:
+    if "Failed to read 4 bytes" in str(ex):
+         db_err = ("Cannot connect to mongod (maybe SSL is turned on?): " +
+                   str(ex))
     else:
         raise RuntimeError("Cannot connect to mongod: " + str(ex))
