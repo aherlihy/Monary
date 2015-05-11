@@ -42,7 +42,7 @@ class TestUTF8(unittest.TestCase):
             data, lens, sizes = m.query(
                 "monary_test", "data", {}, ["test", "test", "test"],
                 ["string:12", "length", "size"], sort="sequence")
-            assert (lens < sizes).all()
+            self.assertTrue((lens < sizes).all())
 
         for monary_bytes, monary_len, expected_str, in zip(data,
                                                            lens,
@@ -50,7 +50,7 @@ class TestUTF8(unittest.TestCase):
             monary_str = monary_bytes.decode('utf8')
 
             # We got the same string out from Monary as we inserted w/ PyMongo.
-            assert monary_str == expected_str
+            self.assertEqual(monary_str, expected_str)
 
             # Monary's idea of "length" == len(string).
-            assert monary_len == len(expected_str)
+            self.assertEqual(monary_len, len(expected_str))

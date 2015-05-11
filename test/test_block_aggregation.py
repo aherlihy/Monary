@@ -17,10 +17,10 @@ class TestBlockAggregation(unittest.TestCase):
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
-        a_elem = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS / 2),
-                                    np.zeros(NUM_TEST_RECORDS / 2), "int32")
-        b_elem = np.ma.masked_array(np.ones(NUM_TEST_RECORDS / 2),
-                                    np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        a_elem = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
+                                    np.zeros(NUM_TEST_RECORDS // 2), "int32")
+        b_elem = np.ma.masked_array(np.ones(NUM_TEST_RECORDS // 2),
+                                    np.zeros(NUM_TEST_RECORDS // 2), "int32")
         a_ids = np.ma.copy(a_elem)
         b_ids = np.ma.copy(a_elem)
         a_data = np.ma.copy(a_elem)
@@ -69,10 +69,10 @@ class TestBlockAggregation(unittest.TestCase):
         pipeline = [{"$group": {"_id": "$data"}}, {"$sort": {"_id": 1}}]
         result = self.aggregate_monary_column("_id", "int32", pipeline)
         expected = np.array([0, 1, 2])
-        assert (expected == result).all()
+        self.assertTrue((expected == result).all())
 
     def test_project(self):
         pipeline = [{"$project": {"b": 1, "_id": 0}}]
         result = self.aggregate_monary_column("b", "int32", pipeline)
-        assert np.count_nonzero(result.mask) == NUM_TEST_RECORDS / 2
-        assert result.sum() == NUM_TEST_RECORDS / 2
+        self.assertEqual(np.count_nonzero(result.mask), NUM_TEST_RECORDS // 2)
+        self.assertEqual(result.sum(), NUM_TEST_RECORDS // 2)

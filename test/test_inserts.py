@@ -18,7 +18,7 @@ from test import db_err, unittest
 
 PY3 = sys.version_info[0] >= 3
 
-NUM_TEST_RECORDS = 14000
+NUM_TEST_RECORDS = 250
 
 
 @unittest.skipIf(db_err, db_err)
@@ -179,7 +179,8 @@ class TestInserts(unittest.TestCase):
              "x10", "x11", "sequence"])
         with monary.Monary() as m:
             ids = m.insert("monary_test", "data", params)
-            assert len(ids) == ids.count() == NUM_TEST_RECORDS
+            self.assertEqual(len(ids), ids.count())
+            self.assertEqual(len(ids), NUM_TEST_RECORDS)
             retrieved = m.query("monary_test",
                                 "data",
                                 {},
@@ -188,8 +189,8 @@ class TestInserts(unittest.TestCase):
                                 self.TYPE_INFERABLE_ARRAYS_TYPES,
                                 sort="sequence")
             for data, expected in zip(retrieved, self.TYPE_INFERABLE_ARRAYS):
-                assert data.count() == expected.count()
-                assert (data == expected).all()
+                self.assertEqual(data.count(), expected.count())
+                self.assertTrue((data == expected).all())
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -206,14 +207,15 @@ class TestInserts(unittest.TestCase):
                      "x11", "x12", "x13", "x14", "x15", "sequence"], types)
         with monary.Monary() as m:
             ids = m.insert("monary_test", "data", params)
-            assert len(ids) == ids.count() == NUM_TEST_RECORDS
+            self.assertEqual(len(ids), ids.count())
+            self.assertEqual(len(ids), NUM_TEST_RECORDS)
             retrieved = m.query("monary_test", "data", {},
                                 ["x1", "x2", "x3", "x4", "x5",
                                  "x6", "x7", "x8", "x9", "x10",
                                  "x11", "x12", "x13", "x14", "x15",
                                  "sequence"], types, sort="sequence")
             for data, expected in zip(retrieved, arrays):
-                assert data.count() == expected.count()
+                self.assertEqual(data.count(), expected.count())
                 if "V" in str(data.dtype):
                     # Need to convert binary data.
                     fun = str
@@ -228,7 +230,7 @@ class TestInserts(unittest.TestCase):
                     # Make these into np.arrays so .all() still works.
                     data = np.array([data == expected])
                     expected = np.array([True])
-                assert (data == expected).all()
+                self.assertTrue((data == expected).all())
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -239,7 +241,8 @@ class TestInserts(unittest.TestCase):
                            monary.MonaryParam.from_lists(
                                [self.bool_arr, self.seq],
                                ["dummy", "sequence"]))
-            assert len(ids) == ids.count() == NUM_TEST_RECORDS
+            self.assertEqual(len(ids), ids.count())
+            self.assertEqual(len(ids), NUM_TEST_RECORDS)
             # Increment the sequence so sorting still works
             seq2 = self.seq + NUM_TEST_RECORDS
 
@@ -247,7 +250,8 @@ class TestInserts(unittest.TestCase):
                 "monary_test", "data",
                 monary.MonaryParam.from_lists(
                     [ids, seq2], ["oid", "sequence"], ["id", "int64"]))
-            assert len(ids2) == ids.count() == NUM_TEST_RECORDS
+            self.assertEqual(len(ids2), ids.count())
+            self.assertEqual(len(ids2),  NUM_TEST_RECORDS)
             # Get back the ids from the original insert (_id) and the ids that
             # were manually inserted (oid)
             retrieved = m.query("monary_test", "data", {},
@@ -257,11 +261,12 @@ class TestInserts(unittest.TestCase):
             # This is what we get back when querying for the ObjectIds
             # that were inserted manually above.
             data = retrieved[1][NUM_TEST_RECORDS:]
-            assert len(expected) == len(data)
-            assert len(expected) == expected.count()
-            assert len(data) == data.count()
+            self.assertEqual(len(expected), len(data))
+            self.assertEqual(len(expected), expected.count())
+            self.assertEqual(len(data), data.count())
             for d, e in zip(data, expected):
-                assert monary.mvoid_to_bson_id(d) == monary.mvoid_to_bson_id(e)
+                self.assertEqual(monary.mvoid_to_bson_id(d),
+                                 monary.mvoid_to_bson_id(e))
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -282,11 +287,11 @@ class TestInserts(unittest.TestCase):
             try:
                 monary.monary.validate_insert_fields(g)
             except ValueError:
-                assert False, "%r should have been valid" % g
+                self.assertTrue(False, "%r should have been valid" % g)
         for b in bad:
             try:
                 monary.monary.validate_insert_fields(b)
-                assert False, "%r should not have been valid" % b
+                self.assertTrue(False, "%r should not have been valid" % b)
             except ValueError:
                 pass
 
@@ -312,19 +317,34 @@ class TestInserts(unittest.TestCase):
                     [squares, rand, self.seq, unmasked, masked],
                     ["data.sqr", "data.rand", "sequence",
                      "x.y.real", "x.y.fake"]))
-        with pymongo.MongoClient() as c:
-            col = c.monary_test.data
-            for i, doc in enumerate(col.find().sort(
-                    [("sequence", pymongo.ASCENDING)])):
-                assert doc["sequence"] == i
-                assert rand[i] == doc["data"]["rand"]
-                assert squares[i] == doc["data"]["sqr"]
-                assert "fake" not in doc["x"]["y"]
-                assert unmasked[i] == doc["x"]["y"]["real"]
+
+        with monary.Monary() as m:
+            sizes_data = m.query("monary_test", "data", {}, ["data"], ["size"])
+            max_data = sizes_data[0].max()
+            sizes_x = m.query("monary_test", "data", {}, ["x"], ["size"])
+            max_x = sizes_x[0].max(0)
+
+            array = m.query(
+                "monary_test", "data", {},
+                ["data", "sequence", "x"],
+                ["bson:%d" % max_data, "float64", "bson:%d" % max_x])
+
+            datas = [monary.monary.mvoid_to_bson_dict(d) for d in array[0]]
+            xs = [monary.monary.mvoid_to_bson_dict(d) for d in array[2]]
+
+            for i in array[1]:
+                index = int(i)
+                self.assertEqual(datas[index]["rand"], rand[index])
+                self.assertEqual(datas[index]["sqr"], squares[index])
+                self.assertNotIn("fake", xs[index]["y"])
+                self.assertEqual(unmasked[index], xs[index]["y"]["real"])
+
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
     def test_retrieve_nested(self):
+        with pymongo.MongoClient() as c:
+            c.drop_database("monary_test")
         arrays = [self.bool_arr, self.int8_arr, self.int16_arr, self.int32_arr,
                   self.int64_arr, self.float32_arr, self.float64_arr,
                   self.string_arr, self.seq]
@@ -340,18 +360,25 @@ class TestInserts(unittest.TestCase):
                      "sequence"],
                     ["bool", "int8", "int16", "int32", "int64",
                      "float32", "float64", "string:10", "int64"]))
-        with pymongo.MongoClient() as c:
-            col = c.monary_test.data
-            for i, doc in enumerate(col.find().sort(
-                    [("sequence", pymongo.ASCENDING)])):
-                assert doc["sequence"] == i
-                for j in range(8):
-                    if not arrays[j].mask[i]:
-                        data = arrays[j][i]
-                        exp = doc["a"]["b"]["c"]["d"]["e"]["f"]["g"]["h"]
-                        exp = exp["x" + str(j + 1)]
-                        if PY3 and isinstance(data, bytes):
-                            data = data.decode("ascii")
+
+        with monary.Monary() as m:
+            sizes = m.query("monary_test", "data", {}, ["a.b.c.d.e.f.g.h"],
+                            ["size"])
+            max_size = max(sizes[0])
+            ret = m.query("monary_test", "data", {}, ["a.b.c.d.e.f.g.h"],
+                          ["bson:%d" % max_size])
+            self.assertEqual(len(ret[0]), NUM_TEST_RECORDS)
+            data = [monary.monary.mvoid_to_bson_dict(d) for d in ret[0]]
+            for i in range(NUM_TEST_RECORDS):
+                for j in range(len(arrays)):
+                    key = "x%d" % (j + 1)
+                    if key in data[i].keys():
+                        if PY3 and j == 7:
+                            self.assertEqual(data[i][key],
+                                             arrays[j][i].decode('utf-8'))
+                        else:
+                            self.assertEqual(data[i][key], arrays[j][i])
+
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -374,12 +401,18 @@ class TestInserts(unittest.TestCase):
                 monary.MonaryParam.from_lists([encoded, self.seq],
                                               ["doc", "sequence"],
                                               ["bson:%d" % max_len, "int64"]))
-        with pymongo.MongoClient() as c:
-            col = c.monary_test.data
-            for i, doc in enumerate(col.find().sort(
-                    [("sequence", pymongo.ASCENDING)])):
-                assert doc["sequence"] == i
-                assert doc["doc"] == docs[i]
+        with monary.Monary() as m:
+            sizes_data = m.query("monary_test", "data", {}, ["doc"], ["size"])
+            max_data = sizes_data[0].max()
+            array = m.query(
+                "monary_test", "data", {},
+                ["doc", "sequence"],
+                ["bson:%d" % max_data, "int64"])
+            data = [monary.monary.mvoid_to_bson_dict(d) for d in array[0]]
+
+        for i in range(NUM_TEST_RECORDS):
+            self.assertEqual(data[i], docs[i])
+            self.assertEqual(array[1][i], self.seq[i])
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -398,26 +431,30 @@ class TestInserts(unittest.TestCase):
                 monary.MonaryParam.from_lists(
                     [self.int16_arr, self.seq],
                     ["num", "_id"]))
-            assert len(id_seq) == id_seq.count() == NUM_TEST_RECORDS
-            assert (id_seq == self.seq.data).all()
+            self.assertEqual(len(id_seq), id_seq.count())
+            self.assertEqual(len(id_seq), NUM_TEST_RECORDS)
+            self.assertTrue((id_seq == self.seq.data).all())
             id_float = m.insert(
                 "monary_test", "data",
                 monary.MonaryParam.from_lists(
                     [self.seq, self.date_arr, f_unmasked],
                     ["sequence", "x.date", "_id"],
                     ["int64", "date", "float64"]))
-            assert len(id_float) == id_float.count() == NUM_TEST_RECORDS
-            assert (id_float == f_unmasked.data).all()
+            self.assertEqual(len(id_float), id_float.count())
+            self.assertEqual(len(id_float), NUM_TEST_RECORDS)
+            self.assertTrue((id_float == f_unmasked.data).all())
             # BSON type 18 is int64.
             data, = m.query("monary_test", "data", {"_id": {"$type": 18}},
                             ["_id"], ["int64"], sort="_id")
-            assert len(data) == data.count() == NUM_TEST_RECORDS
-            assert (data == self.seq).all()
+            self.assertEqual(len(data), data.count())
+            self.assertEqual(len(data), NUM_TEST_RECORDS)
+            self.assertTrue((data == self.seq).all())
             # BSON type 1 is double (float64).
             data, = m.query("monary_test", "data", {"_id": {"$type": 1}},
                             ["_id"], ["float64"], sort="sequence")
-            assert len(data) == data.count() == NUM_TEST_RECORDS
-            assert (data == f_unmasked).all()
+            self.assertEqual(len(data), data.count())
+            self.assertEqual(len(data), NUM_TEST_RECORDS)
+            self.assertTrue((data == f_unmasked).all())
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
@@ -428,12 +465,13 @@ class TestInserts(unittest.TestCase):
             a_id = m.insert("monary_test",
                             "data",
                             [monary.MonaryParam(a, "_id")])
-            assert len(a_id) == a_id.count() == len(a)
+            self.assertEqual(len(a_id), a_id.count())
+            self.assertEqual(len(a_id), len(a))
             b_id = m.insert("monary_test",
                             "data",
                             [monary.MonaryParam(b, "_id")])
-            assert len(b_id) == len(b)
-            assert b_id.count() == len(b) - len(a)
+            self.assertEqual(len(b_id), len(b))
+            self.assertEqual(b_id.count(), len(b) - len(a))
             with pymongo.MongoClient() as c:
                 c.drop_database("monary_test")
 
@@ -452,12 +490,12 @@ class TestInserts(unittest.TestCase):
             ids = m.insert("monary_test", "data",
                            [monary.MonaryParam(nums, "_id")])
 
-            assert len(ids) == len(nums)
-            assert ids.count() == len(nums) - len(threes)
+            self.assertEqual(len(ids), len(nums))
+            self.assertEqual(ids.count(), len(nums) - len(threes))
             # Everything that's a 'three' should be masked.
-            assert ids.mask[::3].all()
+            self.assertTrue(ids.mask[::3].all())
             # Nothing that's not a 'three' should be masked.
-            assert not ids.mask[1::3].any()
-            assert not ids.mask[2::3].any()
+            self.assertFalse(ids.mask[1::3].any())
+            self.assertFalse(ids.mask[2::3].any())
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")

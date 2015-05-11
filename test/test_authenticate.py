@@ -38,14 +38,14 @@ class TestAuthentication(unittest.TestCase):
                            password="monary_test_pass") as m:
             col, = m.query("admin", "junk",
                            {}, ["route"], ["int32"])
-            assert col[0] == 66, "test value could not be retrieved"
+            self.assertEqual(col[0], 66, "test value could not be retrieved")
 
     def test_with_authenticate_from_uri(self):
         with monary.Monary("mongodb://monary_test_user:monary_test_"
                            "pass@127.0.0.1:27017/admin") as m:
             col, = m.query("admin", "junk",
                            {}, ["route"], ["int32"])
-            assert col[0] == 66, "test value could not be retrieved"
+            self.assertEqual(col[0], 66, "test value could not be retrieved")
 
     def test_bad_authenticate(self):
         with self.assertRaisesRegexp(monary.monary.MonaryError,
@@ -72,4 +72,4 @@ class TestAuthentication(unittest.TestCase):
                       password="monary_test_pass")
             col, = m.query("admin", "junk",
                            {}, ["route"], ["int32"])
-            assert col[0] == 66, "test value could not be retrieved"
+            self.assertEqual(col[0], 66, "test value could not be retrieved")

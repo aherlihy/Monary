@@ -18,8 +18,8 @@ DATES = [
 class TestDateHelper(unittest.TestCase):
     def test_datetime_to_mongo(self):
         for dt, mongo in DATES:
-            assert datetime_to_mongodate(dt) == mongo
+            self.assertEqual(datetime_to_mongodate(dt), mongo)
 
     def test_mongo_to_datetime(self):
         for dt, mongo in DATES:
-            assert mongodate_to_datetime(mongo) == dt
+            self.assertEqual(mongodate_to_datetime(mongo), dt)

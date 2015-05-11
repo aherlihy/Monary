@@ -6,6 +6,7 @@ import copy
 import ctypes
 import os
 import platform
+import struct
 import sys
 
 PY3 = sys.version_info[0] >= 3
@@ -36,6 +37,8 @@ cmonary = None
 
 ERROR_LEN = 504
 ERROR_ARR = ctypes.c_char * ERROR_LEN
+
+_UNPACK_INT = struct.Struct("<i").unpack
 
 
 class bson_error_t(ctypes.Structure):
@@ -241,6 +244,21 @@ def mvoid_to_bson_id(mvoid):
     else:
         # Python 2.6 / 2.7.
         return bson.ObjectId(str(mvoid))
+
+
+def mvoid_to_bson_dict(mvoid):
+    """Converts a numpy mvoid pointed at raw BSON to a dictionary.
+
+        :param mvoid: numpy.ma.core.mvoid returned from Monary
+        :returns: the BSON object as a dictionary
+        :rtype: dict
+    """
+    binary = bytes(mvoid)
+    meta_len = _UNPACK_INT(binary[:4])[0]
+    # Since numpy arrays are all of one length, but length of data varies.
+    if meta_len < len(binary):
+        binary = binary[:meta_len]
+    return bson.BSON(binary).decode()
 
 
 def validate_insert_fields(fields):

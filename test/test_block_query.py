@@ -18,11 +18,11 @@ class TestBlockQuery(unittest.TestCase):
     def setUpClass(cls):
         with pymongo.MongoClient("127.0.0.1", 27017) as c:
             c.drop_database("monary_test")
-        ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS / 2),
-                                 np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
+                                 np.zeros(NUM_TEST_RECORDS // 2), "int32")
         ids_x = np.ma.copy(ids)
-        x = np.ma.masked_array([3] * (NUM_TEST_RECORDS / 2),
-                               np.zeros(NUM_TEST_RECORDS / 2),
+        x = np.ma.masked_array([3] * (NUM_TEST_RECORDS // 2),
+                               np.zeros(NUM_TEST_RECORDS // 2),
                                "int32")
         c = 0
         for i in range(NUM_TEST_RECORDS):
@@ -59,18 +59,18 @@ class TestBlockQuery(unittest.TestCase):
         total = 0
         for block in self.get_monary_blocks("_id", "int32"):
             total += block.count()
-        assert total == NUM_TEST_RECORDS
+        self.assertEqual(total, NUM_TEST_RECORDS)
 
     def test_masks(self):
         unmasked = 0
         for block in self.get_monary_blocks("x", "int8"):
             unmasked += block.count()
         target_records = int(NUM_TEST_RECORDS / 2)
-        assert unmasked == target_records
+        self.assertEqual(unmasked, target_records)
 
     def test_sum(self):
         total = 0
         for block in self.get_monary_blocks("_id", "int32"):
             total += block.sum()
         target_sum = NUM_TEST_RECORDS * (NUM_TEST_RECORDS - 1) / 2
-        assert total == target_sum
+        self.assertEqual(total, target_sum)

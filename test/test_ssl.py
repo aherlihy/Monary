@@ -53,14 +53,16 @@ class TestSSLCert(unittest.TestCase):
                            ca_dir=global_cert_path,
                            weak_cert_validation=False) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
     def test_pem(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=true",
                            pem_file=global_client_pem,
                            weak_cert_validation=True) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
     def test_uri(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=true",
@@ -69,7 +71,8 @@ class TestSSLCert(unittest.TestCase):
                            ca_dir=global_cert_path,
                            weak_cert_validation=True) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
     def test_bad_uri(self):
         with self.assertRaisesRegexp(monary.monary.MonaryError,
@@ -80,7 +83,8 @@ class TestSSLCert(unittest.TestCase):
                                ca_dir=global_cert_path,
                                weak_cert_validation=True) as m:
                 arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-                assert len(arrays) == 1 and arrays[0] == 0.0
+                self.assertEqual(len(arrays), 1)
+                self.assertEqual(arrays[0], 0.0)
 
     def test_ssl_false(self):
         with self.assertRaisesRegexp(monary.monary.MonaryError,
@@ -88,7 +92,8 @@ class TestSSLCert(unittest.TestCase):
             with monary.Monary("mongodb://localhost:27017/?ssl=false",
                                pem_file=global_client_pem) as m:
                 arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
     def test_validate_server_cert(self):
         with monary.Monary("mongodb://localhost:27017/?ssl=true",
@@ -96,7 +101,8 @@ class TestSSLCert(unittest.TestCase):
                            ca_file=global_ca_pem,
                            weak_cert_validation=False) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
 
 @unittest.skipIf(db_err, db_err)
@@ -118,7 +124,8 @@ class TestNoSSL(unittest.TestCase):
         with monary.Monary("mongodb://localhost:27017/?ssl=false",
                            pem_file=global_client_pem) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)
 
     def test_bad_uri_no_ssl(self):
         with monary.Monary("mongodb://localhost:27017",
@@ -127,4 +134,5 @@ class TestNoSSL(unittest.TestCase):
                            ca_dir=global_cert_path,
                            weak_cert_validation=True) as m:
             arrays = m.query("test", "ssl", {}, ["x1"], ["float64"])
-            assert len(arrays) == 1 and arrays[0] == 0.0
+            self.assertEqual(len(arrays), 1)
+            self.assertEqual(arrays[0], 0.0)

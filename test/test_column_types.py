@@ -127,12 +127,12 @@ class TestColumnTypes(unittest.TestCase):
     def check_int_column(self, coltype):
         data = self.get_monary_column("intval", coltype)
         expected = self.get_record_values("intval")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def check_uint_column(self, coltype):
         data = self.get_monary_column("uintval", coltype)
         expected = self.get_record_values("uintval")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def check_float_column(self, coltype):
         data = self.get_monary_column("floatval", coltype)
@@ -155,22 +155,22 @@ class TestColumnTypes(unittest.TestCase):
         column = self.get_monary_column("_id", "id")
         data = list(map(monary.monary.mvoid_to_bson_id, column))
         expected = self.get_record_values("_id")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_bool_column(self):
         data = self.get_monary_column("boolval", "bool")
         expected = self.get_record_values("boolval")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_date_column(self):
         expected = self.get_record_values("dateval")
         data = self.get_monary_column("dateval", "date")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_timestamp_column(self):
         data = self.get_monary_column("timestampval", "timestamp")
         expected = self.get_record_values("timestampval")
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_string_column(self):
         data = self.get_monary_column("stringval", "string:5")
@@ -179,7 +179,7 @@ class TestColumnTypes(unittest.TestCase):
         else:
             expected = [s.encode('ascii')
                         for s in self.get_record_values("stringval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_binary_column(self):
         if PY3:
@@ -194,13 +194,13 @@ class TestColumnTypes(unittest.TestCase):
                     for x in self.get_monary_column("binaryval", "binary:5")]
             expected = [str(b)
                         for b in self.get_record_values("binaryval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_nested_field(self):
         data = self.get_monary_column("subdocumentval.subkey", "int32")
         expected = [r["subkey"]
                     for r in self.get_record_values("subdocumentval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def list_to_bsonable_dict(self, values):
         return monary.monary.OrderedDict((str(i), val)
@@ -211,71 +211,71 @@ class TestColumnTypes(unittest.TestCase):
         rawdata = self.get_monary_column("subdocumentval", "bson:%d" % size)
         expected = self.get_record_values("subdocumentval")
         data = [bson.BSON(x).decode() for x in rawdata]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_type_column(self):
         # See: http://bsonspec.org/#/specification for type codes.
         data = self.get_monary_column("floatval", "type")
         expected = [1] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("stringval", "type")
         expected = [2] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("intlistval", "type")
         expected = [4] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("binaryval", "type")
         expected = [5] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("boolval", "type")
         expected = [8] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("dateval", "type")
         expected = [9] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
         data = self.get_monary_column("intval", "type")
         expected = [16] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_string_length_column(self):
         data = self.get_monary_column("stringval", "length")
         expected = [len(x) for x in self.get_record_values("stringval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_list_length_column(self):
         data = self.get_monary_column("intlistval", "length")
         expected = [len(x) for x in self.get_record_values("intlistval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_bson_length_column(self):
         data = self.get_monary_column("subdocumentval", "length")
         # We have only one key in the subdocument.
         expected = [1] * len(data)
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_string_size_column(self):
         data = self.get_monary_column("stringval", "size")
         expected = [6] * NUM_TEST_RECORDS
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_list_size_column(self):
         lists = self.get_record_values("intlistval")
         data = self.get_monary_column("intlistval", "size")
         expected = [len(bson.BSON.encode(self.list_to_bsonable_dict(l)))
                     for l in lists]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_bson_size_column(self):
         data = self.get_monary_column("subdocumentval", "size")
         expected = [len(bson.BSON.encode(record))
                     for record in self.get_record_values("subdocumentval")]
-        assert data == expected
+        self.assertEqual(data, expected)
 
     def test_binary_size_column(self):
         data = self.get_monary_column("binaryval", "size")
@@ -285,4 +285,4 @@ class TestColumnTypes(unittest.TestCase):
         else:
             exp = self.get_record_values("binaryval")
         expected = [len(y) for y in exp]
-        assert data == expected
+        self.assertEqual(data, expected)

@@ -17,11 +17,11 @@ class TestQueryBasics(unittest.TestCase):
         with pymongo.MongoClient() as c:
             c.drop_database("monary_test")
 
-        ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS / 2),
-                                 np.zeros(NUM_TEST_RECORDS / 2), "int32")
+        ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
+                                 np.zeros(NUM_TEST_RECORDS // 2), "int32")
         ids_x = np.ma.copy(ids)
-        x = np.ma.masked_array([3] * (NUM_TEST_RECORDS / 2),
-                               np.zeros(NUM_TEST_RECORDS / 2),
+        x = np.ma.masked_array([3] * (NUM_TEST_RECORDS // 2),
+                               np.zeros(NUM_TEST_RECORDS // 2),
                                "int32")
         c = 0
         for i in range(NUM_TEST_RECORDS):
@@ -51,18 +51,19 @@ class TestQueryBasics(unittest.TestCase):
 
     def test_count(self):
         with monary.Monary("127.0.0.1") as m:
-            assert m.count("monary_test", "test_data", {}) == NUM_TEST_RECORDS
+            self.assertEqual(m.count("monary_test", "test_data", {}),
+                             NUM_TEST_RECORDS)
 
     def test_masks(self):
         vals = self.get_monary_column("x", "int8")
-        target_records = int(NUM_TEST_RECORDS / 2)
-        assert vals.count() == target_records
+        target_records = int(NUM_TEST_RECORDS // 2)
+        self.assertEqual(vals.count(), target_records)
 
     def test_sum(self):
         vals = self.get_monary_column("_id", "int32")
-        target_sum = NUM_TEST_RECORDS * (NUM_TEST_RECORDS - 1) / 2
-        assert vals.sum() == target_sum
+        target_sum = NUM_TEST_RECORDS * (NUM_TEST_RECORDS - 1) // 2
+        self.assertEqual(vals.sum(), target_sum)
 
     def test_sort(self):
         vals = self.get_monary_column("_id", "int32")
-        assert (vals == list(range(NUM_TEST_RECORDS))).all()
+        self.assertTrue((vals == list(range(NUM_TEST_RECORDS))).all())

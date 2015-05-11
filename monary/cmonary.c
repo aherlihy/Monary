@@ -564,7 +564,10 @@ monary_load_document_value(const bson_iter_t * bsonit,
             document_len = citem->type_arg;
         }
 
-        dest = ((uint8_t *) citem->storage) + (idx * document_len);
+        dest = ((uint8_t *) citem->storage) + (idx * citem->type_arg);
+
+        memset(dest, 0, citem->type_arg);
+
         memcpy(dest, document, document_len);
         return 1;
     }
