@@ -2,7 +2,6 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import numpy as np
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -16,8 +15,8 @@ BLOCK_SIZE = 32 * 50
 class TestBlockQuery(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient("127.0.0.1", 27017) as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
         ids = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
                                  np.zeros(NUM_TEST_RECORDS // 2), "int32")
         ids_x = np.ma.copy(ids)
@@ -37,20 +36,20 @@ class TestBlockQuery(unittest.TestCase):
         param = monary.MonaryParam.from_lists([ids], ["_id"], ["int32"])
 
         with monary.Monary() as m:
-            m.insert("monary_test", "test_data", x_param)
-            m.insert("monary_test", "test_data", param)
+            m.insert("monary_test", "data", x_param)
+            m.insert("monary_test", "data", param)
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def get_monary_connection(self):
         return monary.Monary("127.0.0.1", 27017)
 
     def get_monary_blocks(self, colname, coltype):
         with self.get_monary_connection() as m:
-            for block, in m.block_query("monary_test", "test_data",
+            for block, in m.block_query("monary_test", "data",
                                         {}, [colname], [coltype],
                                         block_size=BLOCK_SIZE, sort="_id"):
                 yield block

@@ -1,7 +1,6 @@
 import re
 
 import bson
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -11,20 +10,20 @@ from test import db_err, unittest
 class TestExceptions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def test_get_monary_numpy_type1(self):
         with self.assertRaisesRegexp(
                 ValueError,
                 "Too many parts in type"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["string:6:4"] * 5)
 
     def test_get_monary_numpy_type2(self):
@@ -32,7 +31,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "Unable to parse type argument"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["string:x"] * 5)
 
     def test_get_monary_numpy_type3(self):
@@ -40,7 +39,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "Unknown typename"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["junk"] * 5)
 
     def test_get_monary_numpy_type4(self):
@@ -48,7 +47,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "'string' must have an explicit typearg with nonzero length"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["string:0"] * 5)
 
     def test_get_full_query1(self):
@@ -57,7 +56,7 @@ class TestExceptions(unittest.TestCase):
                 "Invalid ordering: should be str or list of \(column, "
                 "direction\) pairs"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5,
                         sort=monary.Monary())
 
@@ -67,7 +66,7 @@ class TestExceptions(unittest.TestCase):
                 "Invalid ordering: should be str or list of \(column, "
                 "direction\) pairs"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5,
                         hint=monary.Monary())
 
@@ -76,7 +75,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "You cannot have a password with no username"):
             with monary.Monary(password='mng') as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_make_column_data1(self):
@@ -84,7 +83,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "Number of fields and types do not match"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1"], ["float64"] * 5)
 
     def test_make_column_data2(self):
@@ -92,7 +91,7 @@ class TestExceptions(unittest.TestCase):
                 ValueError,
                 "Number of fields exceeds maximum of 1024"):
             with monary.Monary() as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1"] * 1025, ["float64"] * 1025)
 
     def test_make_column_data3(self):
@@ -101,7 +100,7 @@ class TestExceptions(unittest.TestCase):
                 "exceeds maximum of 1024"):
             with monary.Monary() as m:
                 st = "x" * 1025
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         [st], ["float64"])
 
     def test_get_pipeline(self):
@@ -109,7 +108,7 @@ class TestExceptions(unittest.TestCase):
                 TypeError,
                 "Pipeline must be a dict or a list"):
             with monary.Monary() as m:
-                m.aggregate("test", "collection", "this is not a list", {},
+                m.aggregate("test", "data", "this is not a list", {},
                             ['x1'], ["float64"])
 
     def test_monary_connect1(self):
@@ -117,7 +116,7 @@ class TestExceptions(unittest.TestCase):
                 monary.monary.MonaryError,
                 "Failed to resolve"):
             with monary.Monary('mongodb://asfadsf') as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_monary_connect2(self):
@@ -126,7 +125,7 @@ class TestExceptions(unittest.TestCase):
                 re.compile("(Failed to authenticate credentials|Authentication"
                            " failed)")):
             with monary.Monary(username='mng') as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_monary_count1(self):
@@ -134,7 +133,7 @@ class TestExceptions(unittest.TestCase):
                 monary.monary.MonaryError,
                 "Invalid ns"):
             with monary.Monary() as m:
-                m.query("", "collection", {},
+                m.query("", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_monary_count2(self):
@@ -149,7 +148,7 @@ class TestExceptions(unittest.TestCase):
                 monary.monary.MonaryError,
                 "Failed to handshake and validate TLS certificate"):
             with monary.Monary("mongodb://localhost:27017/?ssl=true") as m:
-                m.query("test", "collection", {},
+                m.query("test", "data", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_monary_query_bson(self):
@@ -158,7 +157,7 @@ class TestExceptions(unittest.TestCase):
                 bson.InvalidDocument,
                 "documents must have only string keys, key was 0"):
             with monary.Monary() as m:
-                m.query("test", "collection", {0: 0},
+                m.query("test", "data", {0: 0},
                         ["x1", "x2", "x3", "x4", "x5"], ["float64"] * 5)
 
     def test_monary_aggregate(self):
@@ -168,7 +167,7 @@ class TestExceptions(unittest.TestCase):
                 "A pipeline stage specification object must contain exactly "
                 "one field"):
             with monary.Monary() as m:
-                m.aggregate("test", "collection", {},
+                m.aggregate("test", "data", {},
                             ['x1', 'x2', 'x3', 'x4', 'x5'],
                             ["float64"] * 5)
 
@@ -178,6 +177,6 @@ class TestExceptions(unittest.TestCase):
                 monary.monary.MonaryError,
                 "exception: Unrecognized pipeline stage name:"):
             with monary.Monary() as m:
-                m.aggregate("test", "collection", {"hi": "you"},
+                m.aggregate("test", "data", {"hi": "you"},
                             ['x1', 'x2', 'x3', 'x4', 'x5'],
                             ["float64"] * 5)

@@ -2,7 +2,6 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import numpy as np
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -14,8 +13,8 @@ NUM_TEST_RECORDS = 5000
 class TestAggregation(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
         a_elem = np.ma.masked_array(np.zeros(NUM_TEST_RECORDS // 2),
                                     np.zeros(NUM_TEST_RECORDS // 2), "int32")
@@ -51,8 +50,8 @@ class TestAggregation(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def aggregate_monary_column(self, colname, coltype, pipeline, **kwargs):
         with monary.Monary("127.0.0.1") as m:

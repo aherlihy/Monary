@@ -11,7 +11,6 @@ import time
 
 import bson
 import numpy as np
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -64,8 +63,8 @@ class TestInserts(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
         random.seed(1234)  # For reproducibility.
 
@@ -169,8 +168,8 @@ class TestInserts(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def test_insert_and_retrieve_no_types(self):
         params = monary.MonaryParam.from_lists(
@@ -191,8 +190,8 @@ class TestInserts(unittest.TestCase):
             for data, expected in zip(retrieved, self.TYPE_INFERABLE_ARRAYS):
                 self.assertEqual(data.count(), expected.count())
                 self.assertTrue((data == expected).all())
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")
 
     def test_insert_and_retrieve(self):
         arrays = (self.TYPE_INFERABLE_ARRAYS +
@@ -231,8 +230,8 @@ class TestInserts(unittest.TestCase):
                     data = np.array([data == expected])
                     expected = np.array([True])
                 self.assertTrue((data == expected).all())
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")
 
     def test_oid(self):
         with monary.Monary() as m:
@@ -267,8 +266,8 @@ class TestInserts(unittest.TestCase):
             for d, e in zip(data, expected):
                 self.assertEqual(monary.mvoid_to_bson_id(d),
                                  monary.mvoid_to_bson_id(e))
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")
 
     def test_insert_field_validation(self):
         good = [
@@ -339,12 +338,11 @@ class TestInserts(unittest.TestCase):
                 self.assertNotIn("fake", xs[index]["y"])
                 self.assertEqual(unmasked[index], xs[index]["y"]["real"])
 
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+            m.dropCollection("monary_test", "data")
 
     def test_retrieve_nested(self):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
         arrays = [self.bool_arr, self.int8_arr, self.int16_arr, self.int32_arr,
                   self.int64_arr, self.float32_arr, self.float64_arr,
                   self.string_arr, self.seq]
@@ -379,8 +377,7 @@ class TestInserts(unittest.TestCase):
                         else:
                             self.assertEqual(data[i][key], arrays[j][i])
 
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+            m.dropCollection("monary_test", "data")
 
     def test_insert_bson(self):
         docs = []
@@ -413,8 +410,9 @@ class TestInserts(unittest.TestCase):
         for i in range(NUM_TEST_RECORDS):
             self.assertEqual(data[i], docs[i])
             self.assertEqual(array[1][i], self.seq[i])
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def test_custom_id(self):
         f_unmasked = np.ma.masked_array(
@@ -455,8 +453,8 @@ class TestInserts(unittest.TestCase):
             self.assertEqual(len(data), data.count())
             self.assertEqual(len(data), NUM_TEST_RECORDS)
             self.assertTrue((data == f_unmasked).all())
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")
 
     def test_insert_errors(self):
         with monary.Monary() as m:
@@ -472,8 +470,8 @@ class TestInserts(unittest.TestCase):
                             [monary.MonaryParam(b, "_id")])
             self.assertEqual(len(b_id), len(b))
             self.assertEqual(b_id.count(), len(b) - len(a))
-            with pymongo.MongoClient() as c:
-                c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")
 
             # ``threes`` is a list of numbers counting up by 3, i.e. 0 3 6 ...
             num_threes = int(NUM_TEST_RECORDS / 3) + 1
@@ -497,5 +495,5 @@ class TestInserts(unittest.TestCase):
             # Nothing that's not a 'three' should be masked.
             self.assertFalse(ids.mask[1::3].any())
             self.assertFalse(ids.mask[2::3].any())
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+
+            m.dropCollection("monary_test", "data")

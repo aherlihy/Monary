@@ -182,6 +182,26 @@ monary_destroy_collection(mongoc_collection_t * collection)
 }
 
 /**
+ * Drops the given collection.
+ *
+ * @param collection: The database to drop.
+ * @param error: The error to return.
+*/
+int
+monary_drop_collection(mongoc_collection_t *collection, bson_error_t *err)
+{
+    bool ret = 0;
+    DEBUG("Dropping collection");
+    if (collection) {
+        ret = mongoc_collection_drop(collection, err);
+    }
+    else {
+        monary_error(err, "collection passed to drop_collection is NULL\n");
+    }
+    return ret;
+}
+
+/**
  * Holds the storage for an array of objects.
  *
  * @memb field The name of the field in the document.

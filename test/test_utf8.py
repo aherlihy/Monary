@@ -5,7 +5,6 @@
 import sys
 
 import numpy as np
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -17,8 +16,8 @@ class TestUTF8(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
         if sys.version_info[0] >= 3:
             # Python 2: convert from str to unicode.
@@ -30,27 +29,29 @@ class TestUTF8(unittest.TestCase):
                                                    ["test", "sequence"],
                                                    ["string:12", "int32"])
         with monary.Monary() as m:
-            m.insert("monary_test", "data2", strs_param)
+            m.insert("monary_test", "data", strs_param)
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def test_utf8(self):
-        with monary.Monary("127.0.0.1") as m:
+        with monary.Monary() as m:
             data, lens, sizes = m.query(
                 "monary_test", "data", {}, ["test", "test", "test"],
                 ["string:12", "length", "size"], sort="sequence")
             self.assertTrue((lens < sizes).all())
+        self.assertEqual(len(data), 4)
+        self.assertEqual(len(sizes), 4)
+        self.assertEqual(len(lens), 4)
 
         for monary_bytes, monary_len, expected_str, in zip(data,
                                                            lens,
                                                            self.expected):
-            monary_str = monary_bytes.decode('utf8')
-
-            # We got the same string out from Monary as we inserted w/ PyMongo.
-            self.assertEqual(monary_str, expected_str)
+            exp = expected_str.decode('utf-8')
+            # We got the same string out from Monary as we inserted.
+            self.assertEqual(monary_bytes.decode('utf-8'), exp)
 
             # Monary's idea of "length" == len(string).
-            self.assertEqual(monary_len, len(expected_str))
+            self.assertEqual(monary_len, len(exp))

@@ -24,6 +24,9 @@ class TestColumnTypes(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
+
         random.seed(1234)  # For reproducibility.
 
         def ma(typ):
@@ -47,7 +50,6 @@ class TestColumnTypes(unittest.TestCase):
                                     "<V100")
 
         intlist = [0] * NUM_TEST_RECORDS
-        # TODO: add inserting lists to monary, for now use pymongo
 
         for i in range(NUM_TEST_RECORDS):
             if PY3:
@@ -90,34 +92,33 @@ class TestColumnTypes(unittest.TestCase):
              "timestampval", "stringval", "binaryval", "subdocumentval"],
             ["int32", "int32", "uint32", "float64", "bool", "date",
              "timestamp", "string:6", "binary:5", "bson:100"])
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
 
         with monary.Monary() as m:
             ids = [monary.mvoid_to_bson_id(d) for d in m.insert(
-                "monary_test", "test_data", param)]
+                "monary_test", "data", param)]
             for r in range(len(cls.records)):
                 cls.records[r]["_id"] = ids[r]
 
+        # TODO: remove when multidim arrays are done
         with pymongo.MongoClient() as c:
             for i in range(NUM_TEST_RECORDS):
-                c.monary_test.test_data.update(
+                c.monary_test.data.update(
                     {"_id": ids[i]},
                     {"$set": {"intlistval": intlist[i]}},
                     upsert=False)
 
     @classmethod
     def tearDownClass(cls):
-        with pymongo.MongoClient() as c:
-            c.drop_database("monary_test")
+        with monary.Monary() as m:
+            m.dropCollection("monary_test", "data")
 
     def get_record_values(self, colname):
         return [r[colname] for r in self.records]
 
     def get_monary_column(self, colname, coltype):
-        with monary.Monary("127.0.0.1") as m:
+        with monary.Monary() as m:
             [column] = m.query("monary_test",
-                               "test_data",
+                               "data",
                                {},
                                [colname],
                                [coltype],

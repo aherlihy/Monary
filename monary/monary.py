@@ -112,7 +112,8 @@ FUNCDEFS = [
     "monary_close_query:P:0",
     "monary_create_write_concern:IIBBS:P",
     "monary_destroy_write_concern:P:0",
-    "monary_insert:PPPPPP:0"
+    "monary_insert:PPPPPP:0",
+    "monary_drop_collection:P:I"
 ]
 
 MAX_COLUMNS = 1024
@@ -968,6 +969,36 @@ class Monary(object):
         finally:
             if coldata is not None:
                 cmonary.monary_free_column_data(coldata)
+
+    def dropCollection(self, db, coll):
+        """Drops the collection specified by db, coll.
+
+           :param db: The name of the database.
+           :param coll: The name of the collection to be dropped.
+
+           :returns: Bool indicating if the database was dropped. If true, the
+            database was dropped successfully. If an error is thrown, then
+            there was a problem dropping the database. If the DB or collection
+            doesn't exist, it will return False."""
+        collection = None
+        err = get_empty_bson_error()
+        try:
+            collection = self._get_collection(db, coll)
+            if collection is None:
+                raise MonaryError("Unable to get the collection %s.%s" %
+                                  (db, coll))
+            res = cmonary.monary_drop_collection(collection, ctypes.byref(err))
+        finally:
+            if collection is not None:
+                cmonary.monary_destroy_collection(collection)
+        if not res:
+            if PY3:
+                message = err.message.decode("utf-8")
+            else:
+                message = err.message
+            if "ns not found" not in message:
+                raise MonaryError(message)
+        return res == 1
 
     def close(self):
         """Closes the current connection, if any."""
