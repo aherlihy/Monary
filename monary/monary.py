@@ -116,7 +116,8 @@ FUNCDEFS = [
     "monary_drop_collection:P:I",
     "monary_use_database:PS:P",
     "monary_destroy_database:P:0",
-    "monary_add_user:PSSPPP:I"
+    "monary_add_user:PSSPPP:I",
+    "monary_remove_user:PS:I"
 ]
 
 MAX_COLUMNS = 1024
@@ -216,17 +217,21 @@ def make_bson(obj):
     """Given a Python (JSON compatible) dictionary, returns a BSON string.
 
        (This hijacks the Python -> BSON conversion code from pymongo,
-       which is needed for converting queries.  Perhaps this dependency
-       can be removed in a later version.)
+       which is needed for converting queries.)
 
        :param obj: object to be encoded as BSON (dict, string, or None)
        :returns: BSON encoded representation (byte string)
        :rtype: str
     """
     if obj is None:
-        obj = {}
+        return bson.BSON.encode({})
+    if isinstance(obj, list):
+        bs = {}
+        for o in range(len(obj)):
+            bs[str(o)] = obj[o]
+        return bson.BSON.encode(bs)
     if not isinstance(obj, bytes_type):
-        obj = bson.BSON.encode(obj)
+        return bson.BSON.encode(obj)
     return obj
 
 
@@ -573,9 +578,9 @@ class Monary(object):
             if collection is None:
                 raise MonaryError("Unable to get the collection %s.%s" %
                                   (db, coll))
-            query = make_bson(query)
+            bson_query = make_bson(query)
             count = cmonary.monary_query_count(collection,
-                                               query,
+                                               bson_query,
                                                ctypes.byref(err))
         finally:
             if collection is not None:
@@ -999,7 +1004,8 @@ class Monary(object):
            :returns: Bool indicating if the database was dropped. If true, the
             database was dropped successfully. If an error is thrown, then
             there was a problem dropping the database. If the DB or collection
-            doesn't exist, it will return False."""
+            doesn't exist, it will return False.
+        """
         collection = None
         err = get_empty_bson_error()
         try:
@@ -1020,22 +1026,61 @@ class Monary(object):
                 raise MonaryError(message)
         return res == 1
 
-    def add_user(self, db, username, password, roles, custom_data):
+    def add_user(self, db, username, password, roles=None, custom_data=None):
+        """Adds a user to the database specified by db.
+
+            :param db: The name of the database.
+            :param username: The name of the user to be added.
+            :param password: The password of the new user.
+            :param roles: A (optional) list of the roles for the new user.
+             For example, to add a new user with root access, pass
+             roles=['root'].
+            :param custom_data: A (optional) dictionary with user custom_data.
+
+            :returns: bool indicating if adding the user was successful.
+        """
         database = None
         err = get_empty_bson_error()
         try:
             database = self._get_database(db)
             if database is None:
                 raise MonaryError("unable to get the database %s"%db)
+
+            roles = make_bson(roles)
+            custom_data = make_bson(custom_data)
+
             res = cmonary.monary_add_user(database, username, password,
                                           roles, custom_data,
                                           ctypes.byref(err))
+        finally:
+            if database is not None:
+                cmonary.monary_destroy_database(database)
+        if not res:
+            raise MonaryError(err.message)
+        return res == 1
+
+    def remove_user(self, db, username):
+        """Removes the user specified from the db given.
+
+            :param db: the name of the database.
+            :param username: the name of the user to be removed.
+
+            :returns: boolean indicating success or failure.
+        """
+        database = None
+        err = get_empty_bson_error()
+        try:
+            database = self._get_database(db)
+            if database is None:
+                raise MonaryError("unable to get the database %s"%db)
+
+            res = cmonary.monary_remove_user(database, username,
+                                             ctypes.byref(err))
 
         finally:
             if database is not None:
                 cmonary.monary_destroy_database(database)
         if not res:
-            print "ERROR RET FROM ADD_USER"
             raise MonaryError(err.message)
         return res == 1
 

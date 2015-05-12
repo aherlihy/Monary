@@ -244,10 +244,46 @@ monary_drop_collection(mongoc_collection_t *collection, bson_error_t *err)
  **/
 int
 monary_add_user(mongoc_database_t *db, char* username, char* password,
-                bson_t *roles, bson_t *custom_data, bson_error_t *err)
+                const uint8_t *roles, const uint8_t *custom_data,
+                bson_error_t *err)
 {
-    return mongoc_database_add_user(db, username, password, roles,
-                                    custom_data, err);
+    bson_t roles_bson;          // roles converted to BSON format
+    bson_t data_bson;          // custom_data converted to BSON format
+    uint32_t roles_size;        // Length of the roles in bytes
+    uint32_t data_size;        // Length of the custom_data in bytes
+
+    //build BSON roles+data
+    memcpy(&roles_size, roles, sizeof(uint32_t));
+    if (!bson_init_static(&roles_bson, roles, roles_size)) {
+        monary_error(err, "failed to initialize raw BSON "
+                     "for roles in monary_add_user");
+        return -1;
+    }
+
+    memcpy(&data_size, custom_data, sizeof(uint32_t));
+    if (!bson_init_static(&data_bson, custom_data, data_size)) {
+        monary_error(err, "failed to initialize raw BSON "
+                     "for custom_data in monary_add_user");
+        return -1;
+    }
+
+    return mongoc_database_add_user(db, username, password, &roles_bson,
+                                    &data_bson, err);
+}
+
+/*
+ * Removes a user from the specified db.
+ *
+ * @param db: the database to remove from.
+ * @param username: the user to remove.
+ * @param err: error to report.
+ *
+ * :returns: bool indicating success
+ */
+int
+monary_remove_user(mongoc_database_t *db, char* username, bson_error_t *err)
+{
+    return mongoc_database_remove_user(db, username, err);
 }
 
 /**

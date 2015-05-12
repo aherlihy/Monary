@@ -2,6 +2,7 @@
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
 import pymongo
+import numpy as np
 
 import monary
 from test import db_err, unittest
@@ -20,16 +21,27 @@ if not db_auth:
 class TestAuthentication(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        connection = pymongo.MongoClient()
-        cls.db = connection.admin
-        cls.db.add_user("monary_test_user", "monary_test_pass", roles=["root"])
-        cls.db.authenticate("monary_test_user", "monary_test_pass")
-        cls.db.junk.insert({"route": 66})
+        with monary.Monary() as m:
+            m.add_user("admin", "monary_test_user", "monary_test_pass",
+                       roles=["root"])
+        with monary.Monary(host="127.0.0.1",
+                           database="admin",
+                           username="monary_test_user",
+                           password="monary_test_pass") as m:
+            param = monary.MonaryParam.from_lists([np.ma.masked_array([66], [0], "int32")],
+                                                  ["route"],
+                                                  ["int32"])
+            m.insert("admin", "junk", param)
+
 
     @classmethod
     def tearDownClass(cls):
-        cls.db.junk.drop()
-        cls.db.remove_user("monary_test_user")
+        with monary.Monary(host="127.0.0.1",
+                           database="admin",
+                           username="monary_test_user",
+                           password="monary_test_pass") as m:
+            m.drop_collection("admin", "junk"), "Error dropping collection"
+            m.remove_user("admin", "monary_test_user"), "Error removing admin user"
 
     def test_with_authenticate(self):
         with monary.Monary(host="127.0.0.1",
