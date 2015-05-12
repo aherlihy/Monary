@@ -113,7 +113,10 @@ FUNCDEFS = [
     "monary_create_write_concern:IIBBS:P",
     "monary_destroy_write_concern:P:0",
     "monary_insert:PPPPPP:0",
-    "monary_drop_collection:P:I"
+    "monary_drop_collection:P:I",
+    "monary_use_database:PS:P",
+    "monary_destroy_database:P:0",
+    "monary_add_user:PSSPPP:I"
 ]
 
 MAX_COLUMNS = 1024
@@ -389,6 +392,7 @@ class Monary(object):
 
         self._cmonary = cmonary
         self._connection = None
+        self._database = None
         self.connect(host, port, username, password, database,
                      pem_file, pem_pwd, ca_file, ca_dir, crl_file,
                      weak_cert_validation, options)
@@ -535,6 +539,22 @@ class Monary(object):
         else:
             raise MonaryError("Unable to get the collection %s.%s - "
                               "not connected" % (db, collection))
+
+    def _get_database(self, db):
+        """Returns the specified database.
+
+            :param db: name of database.
+
+            :returns: the database
+            :rtype: cmonary mongoc_database_t*
+        """
+        if self._connection is not None:
+            return cmonary.monary_use_database(self._connection,
+                                               db.encode('ascii'))
+        else:
+            raise MonaryError("Unable to get the collection %s - "
+                              "not connected" % db)
+
 
     def count(self, db, coll, query=None):
         """Count the number of records returned by the given query.
@@ -999,6 +1019,26 @@ class Monary(object):
             if "ns not found" not in message:
                 raise MonaryError(message)
         return res == 1
+
+    def add_user(self, db, username, password, roles, custom_data):
+        database = None
+        err = get_empty_bson_error()
+        try:
+            database = self._get_database(db)
+            if database is None:
+                raise MonaryError("unable to get the database %s"%db)
+            res = cmonary.monary_add_user(database, username, password,
+                                          roles, custom_data,
+                                          ctypes.byref(err))
+
+        finally:
+            if database is not None:
+                cmonary.monary_destroy_database(database)
+        if not res:
+            print "ERROR RET FROM ADD_USER"
+            raise MonaryError(err.message)
+        return res == 1
+
 
     def close(self):
         """Closes the current connection, if any."""

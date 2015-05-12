@@ -150,6 +150,36 @@ monary_disconnect(mongoc_client_t * client)
 }
 
 /**
+ * Use a particular database from the given MongoDB client.
+ *
+ * @param client A mongoc_client_t that has been properly connected to with
+ * mongoc_client_new().
+ * @param db A valid ASCII C string for the name of the database.
+ *
+ * @return If successful, a mongoc_database_t.
+ */
+mongoc_database_t *
+monary_use_database(mongoc_client_t * client,
+                    const char *db)
+{
+    return mongoc_client_get_database(client, db);
+}
+
+/**
+ * Destroys the given database, allowing you to connect to another one.
+ *
+ * @param db: The database to destroy.
+ */
+void
+monary_destroy_database(mongoc_database_t * db)
+{
+    if (db) {
+        DEBUG("%s", "Closing mongoc_database");
+        mongoc_database_destroy(db);
+    }
+}
+
+/**
  * Use a particular database and collection from the given MongoDB client.
  *
  * @param client A mongoc_client_t that has been properly connected to with
@@ -184,7 +214,7 @@ monary_destroy_collection(mongoc_collection_t * collection)
 /**
  * Drops the given collection.
  *
- * @param collection: The database to drop.
+ * @param collection: The collection to drop.
  * @param error: The error to return.
 */
 int
@@ -199,6 +229,25 @@ monary_drop_collection(mongoc_collection_t *collection, bson_error_t *err)
         monary_error(err, "collection passed to drop_collection is NULL\n");
     }
     return ret;
+}
+/**
+ * Creates a new user.
+ *
+ * @param db: The database to add the new user to.
+ * @param username: Username for new user.
+ * @param password: Password for new user.
+ * @param roles: a const bson_t for new user roles.
+ * @param custom_data: const bson_t *custom_data,
+ * @param error: a bson_error_t for reporting the error)
+ *
+ * @returns: bool if successful
+ **/
+int
+monary_add_user(mongoc_database_t *db, char* username, char* password,
+                bson_t *roles, bson_t *custom_data, bson_error_t *err)
+{
+    return mongoc_database_add_user(db, username, password, roles,
+                                    custom_data, err);
 }
 
 /**
