@@ -456,7 +456,7 @@ monary_set_column_item(monary_column_data * coldata,
                        unsigned int type_arg,
                        void *storage, unsigned char *mask, bson_error_t * err)
 {
-    int len;
+    size_t len;
 
     monary_column_item *col;
 
@@ -1514,13 +1514,9 @@ monary_insert(mongoc_collection_t * collection,
 
     bson_t reply;
 
-    monary_column_item *citem;
-
     mongoc_bulk_operation_t *bulk_op;
 
     bool id_provided;
-
-    char *str;
 
     int data_len;
 
@@ -1605,6 +1601,7 @@ monary_insert(mongoc_collection_t * collection,
             else {
                 DEBUG("Error message: %s", err->message);
 #ifndef NDEBUG
+                char* str;
                 str = bson_as_json(&reply, NULL);
                 DEBUG("Server reply: %s", str);
                 bson_free(str);
