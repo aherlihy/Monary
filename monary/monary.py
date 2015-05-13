@@ -562,7 +562,6 @@ class Monary(object):
             raise MonaryError("Unable to get the collection %s - "
                               "not connected" % db)
 
-
     def count(self, db, coll, query=None):
         """Count the number of records returned by the given query.
 
@@ -1051,6 +1050,10 @@ class Monary(object):
             roles = make_bson(roles)
             custom_data = make_bson(custom_data)
 
+            if PY3:
+                username = bytes(username, 'utf-8')
+                password = bytes(password, 'utf-8')
+
             res = cmonary.monary_add_user(database, username, password,
                                           roles, custom_data,
                                           ctypes.byref(err))
@@ -1075,6 +1078,9 @@ class Monary(object):
             database = self._get_database(db)
             if database is None:
                 raise MonaryError("unable to get the database %s" % db)
+
+            if PY3:
+                username = bytes(username, "utf-8")
 
             res = cmonary.monary_remove_user(database, username,
                                              ctypes.byref(err))
@@ -1102,7 +1108,10 @@ class Monary(object):
 
         cmd = bson.BSON.encode(command)
 
-        opts = ctypes.create_string_buffer("", size=max_buffer_size)
+        opts = ctypes.create_string_buffer(bytes(), size=max_buffer_size)
+
+        if PY3:
+            db = bytes(db, 'utf-8')
 
         res = cmonary.monary_client_command_simple(self._connection,
                                                    db,
@@ -1112,7 +1121,7 @@ class Monary(object):
         if not res:
             raise MonaryError(err.message)
 
-        return opts.raw
+        return opts.raw.decode('utf-8')
 
     def close(self):
         """Closes the current connection, if any."""

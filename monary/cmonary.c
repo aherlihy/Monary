@@ -304,7 +304,6 @@ monary_client_command_simple(mongoc_client_t *client,
                              char *dest,
                              bson_error_t *err)
 {
-
     bson_t cmd;
     bson_t rpl;
     uint32_t cmd_size;
