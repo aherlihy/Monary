@@ -101,13 +101,14 @@ class TestColumnTypes(unittest.TestCase):
         # TODO: remove when multidim arrays are done
         with monary.Monary() as m:
             for i in range(NUM_TEST_RECORDS):
-                cmd =  { "update": "data",
-                         "updates": [
-                             {"q": {"_id": ids[i]},
-                              "u": {"$set": {"intlistval": intlist[i]}}}]}
+                cmd = {"update": "data",
+                       "updates": [
+                           {"q": {"_id": ids[i]},
+                            "u": {"$set": {"intlistval": intlist[i]}}}]}
                 ret = m.run_client_command_simple("monary_test", cmd)
                 if not ret:
                     raise RuntimeError("Error inserting into monary_test")
+
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
