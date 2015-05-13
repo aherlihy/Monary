@@ -7,7 +7,6 @@ import sys
 
 import bson
 import numpy as np
-import pymongo
 
 import monary
 from test import db_err, unittest
@@ -100,13 +99,15 @@ class TestColumnTypes(unittest.TestCase):
                 cls.records[r]["_id"] = ids[r]
 
         # TODO: remove when multidim arrays are done
-        with pymongo.MongoClient() as c:
+        with monary.Monary() as m:
             for i in range(NUM_TEST_RECORDS):
-                c.monary_test.data.update(
-                    {"_id": ids[i]},
-                    {"$set": {"intlistval": intlist[i]}},
-                    upsert=False)
-
+                cmd =  { "update": "data",
+                         "updates": [
+                             {"q": {"_id": ids[i]},
+                              "u": {"$set": {"intlistval": intlist[i]}}}]}
+                ret = m.run_client_command_simple("monary_test", cmd)
+                if not ret:
+                    raise RuntimeError("Error inserting into monary_test")
     @classmethod
     def tearDownClass(cls):
         with monary.Monary() as m:
