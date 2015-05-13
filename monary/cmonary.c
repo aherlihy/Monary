@@ -257,14 +257,14 @@ monary_add_user(mongoc_database_t *db, char* username, char* password,
     if (!bson_init_static(&roles_bson, roles, roles_size)) {
         monary_error(err, "failed to initialize raw BSON "
                      "for roles in monary_add_user");
-        return -1;
+        return 0;
     }
 
     memcpy(&data_size, custom_data, sizeof(uint32_t));
     if (!bson_init_static(&data_bson, custom_data, data_size)) {
         monary_error(err, "failed to initialize raw BSON "
                      "for custom_data in monary_add_user");
-        return -1;
+        return 0;
     }
 
     return mongoc_database_add_user(db, username, password, &roles_bson,
@@ -284,6 +284,48 @@ int
 monary_remove_user(mongoc_database_t *db, char* username, bson_error_t *err)
 {
     return mongoc_database_remove_user(db, username, err);
+}
+
+/*
+ * Runs the DB command and returns bool for success. The first result of the
+ * command will be copied into the argument ``dest``.
+ *
+ * @param client: the client.
+ * @param db: the database.
+ * @param dest: the string buffer to fill in with the results of the command.
+ * @param err: error to report.
+ *
+ * :returns: bool indicating success.
+ */
+int
+monary_client_command_simple(mongoc_client_t *client,
+                             char* db,
+                             const uint8_t *command,
+                             char *dest,
+                             bson_error_t *err)
+{
+
+    bson_t cmd;
+    bson_t rpl;
+    uint32_t cmd_size;
+
+    //build BSON roles+data
+    memcpy(&cmd_size, command, sizeof(uint32_t));
+    if (!bson_init_static(&cmd, command, cmd_size)) {
+        monary_error(err, "failed to initialize raw BSON "
+                     "for command in monary_client_command_simple");
+        return 0;
+    }
+
+    int ret = mongoc_client_command_simple(client, db, &cmd, NULL, &rpl, err);
+
+    char* json;
+    if ((json = bson_as_json(&rpl, NULL))) {
+        strcpy(dest, json);
+    }
+
+    return ret;
+
 }
 
 /**

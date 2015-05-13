@@ -4,6 +4,7 @@
 import atexit
 import copy
 import ctypes
+import numpy as np
 import os
 import platform
 import struct
@@ -117,7 +118,8 @@ FUNCDEFS = [
     "monary_use_database:PS:P",
     "monary_destroy_database:P:0",
     "monary_add_user:PSSPPP:I",
-    "monary_remove_user:PS:I"
+    "monary_remove_user:PS:I",
+    "monary_client_command_simple:PP:I"
 ]
 
 MAX_COLUMNS = 1024
@@ -1044,7 +1046,7 @@ class Monary(object):
         try:
             database = self._get_database(db)
             if database is None:
-                raise MonaryError("unable to get the database %s"%db)
+                raise MonaryError("unable to get the database %s" % db)
 
             roles = make_bson(roles)
             custom_data = make_bson(custom_data)
@@ -1072,7 +1074,7 @@ class Monary(object):
         try:
             database = self._get_database(db)
             if database is None:
-                raise MonaryError("unable to get the database %s"%db)
+                raise MonaryError("unable to get the database %s" % db)
 
             res = cmonary.monary_remove_user(database, username,
                                              ctypes.byref(err))
@@ -1084,6 +1086,33 @@ class Monary(object):
             raise MonaryError(err.message)
         return res == 1
 
+    def run_client_command_simple(self, db, command):
+        """Run a database command and return the first result as a string.
+
+            :param db: the name of the DB connecting to.
+            :param command: the command to run on the DB.
+
+            :returns: the first result of the DB command as a string.
+        """
+        max_buffer_size = 10000
+        err = get_empty_bson_error()
+
+        if self._connection is None:
+            raise MonaryError("Unable to get client")
+
+        cmd = bson.BSON.encode(command)
+
+        opts = ctypes.create_string_buffer("", size=max_buffer_size)
+
+        res = cmonary.monary_client_command_simple(self._connection,
+                                                   db,
+                                                   cmd,
+                                                   ctypes.byref(opts),
+                                                   ctypes.byref(err))
+        if not res:
+            raise MonaryError(err.message)
+
+        return opts.raw
 
     def close(self):
         """Closes the current connection, if any."""

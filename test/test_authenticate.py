@@ -1,7 +1,6 @@
 # Monary - Copyright 2011-2014 David J. C. Beach
 # Please see the included LICENSE.TXT and NOTICE.TXT for licensing information.
 
-import pymongo
 import numpy as np
 
 import monary
@@ -10,8 +9,9 @@ from test import db_err, unittest
 # If there was no error connecting, need to check if auth is working.
 db_auth = db_err
 if not db_auth:
-    with pymongo.MongoClient() as global_cxn:
-        global_opts = global_cxn.admin.command('getCmdLineOpts')['argv']
+    with monary.Monary() as global_m:
+        global_opts = global_m.run_client_command_simple("admin",
+                                                         {"getCmdLineOpts": 1})
         if "--auth" not in global_opts:
             db_auth = "The mongo server (mongod) needs to be running " \
                       "with authentication (--auth)"
@@ -28,11 +28,9 @@ class TestAuthentication(unittest.TestCase):
                            database="admin",
                            username="monary_test_user",
                            password="monary_test_pass") as m:
-            param = monary.MonaryParam.from_lists([np.ma.masked_array([66], [0], "int32")],
-                                                  ["route"],
-                                                  ["int32"])
+            param = monary.MonaryParam.from_lists(
+                [np.ma.masked_array([66], [0], "int32")], ["route"], ["int32"])
             m.insert("admin", "junk", param)
-
 
     @classmethod
     def tearDownClass(cls):
@@ -40,8 +38,8 @@ class TestAuthentication(unittest.TestCase):
                            database="admin",
                            username="monary_test_user",
                            password="monary_test_pass") as m:
-            m.drop_collection("admin", "junk"), "Error dropping collection"
-            m.remove_user("admin", "monary_test_user"), "Error removing admin user"
+            m.drop_collection("admin", "junk")
+            m.remove_user("admin", "monary_test_user")
 
     def test_with_authenticate(self):
         with monary.Monary(host="127.0.0.1",
