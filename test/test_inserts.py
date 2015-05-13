@@ -17,7 +17,7 @@ from test import db_err, unittest
 
 PY3 = sys.version_info[0] >= 3
 
-NUM_TEST_RECORDS = 250
+NUM_TEST_RECORDS = 14000
 
 
 @unittest.skipIf(db_err, db_err)
