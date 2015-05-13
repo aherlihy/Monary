@@ -56,6 +56,7 @@ settings = {
                        "monary_insert",
                        "monary_drop_collection",
                        "monary_use_database",
+                       "monary_destroy_database",
                        "monary_add_user",
                        "monary_remove_user",
                        "monary_client_command_simple"],

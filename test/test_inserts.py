@@ -142,15 +142,10 @@ class TestInserts(unittest.TestCase):
         cls.NON_TYPE_INFERABLE_ARRAYS.append(cls.timestamp_arr)
         cls.NON_TYPE_INFERABLE_ARRAYS_TYPES.append("timestamp")
 
-        # Calculate random date.
-        t = (datetime.datetime(1970, 1, 1) +
-             (1 - 2 * random.randint(0, 1)) *
-             datetime.timedelta(days=random.randint(0, 60 * 365),
-                                seconds=random.randint(0, 24 * 3600),
-                                milliseconds=random.randint(0, 1000)))
-        random_date = time.mktime(t.timetuple())
+        t = datetime.datetime.now()
+        today = time.mktime(t.timetuple())
 
-        cls.date_arr = make_ma([random_date for _ in ntr()], "int64")
+        cls.date_arr = make_ma([today for _ in ntr()], "int64")
         cls.NON_TYPE_INFERABLE_ARRAYS.append(cls.date_arr)
         cls.NON_TYPE_INFERABLE_ARRAYS_TYPES.append("date")
 

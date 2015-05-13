@@ -307,8 +307,9 @@ monary_client_command_simple(mongoc_client_t *client,
     bson_t cmd;
     bson_t rpl;
     uint32_t cmd_size;
+    char* json;
+    int ret;
 
-    //build BSON roles+data
     memcpy(&cmd_size, command, sizeof(uint32_t));
     if (!bson_init_static(&cmd, command, cmd_size)) {
         monary_error(err, "failed to initialize raw BSON "
@@ -316,9 +317,8 @@ monary_client_command_simple(mongoc_client_t *client,
         return 0;
     }
 
-    int ret = mongoc_client_command_simple(client, db, &cmd, NULL, &rpl, err);
+    ret = mongoc_client_command_simple(client, db, &cmd, NULL, &rpl, err);
 
-    char* json;
     if ((json = bson_as_json(&rpl, NULL))) {
         strcpy(dest, json);
     }
