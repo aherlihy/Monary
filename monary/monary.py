@@ -4,7 +4,6 @@
 import atexit
 import copy
 import ctypes
-import numpy as np
 import os
 import platform
 import struct

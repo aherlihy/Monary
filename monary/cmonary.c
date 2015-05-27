@@ -252,7 +252,8 @@ monary_add_user(mongoc_database_t *db, char* username, char* password,
     uint32_t roles_size;        // Length of the roles in bytes
     uint32_t data_size;        // Length of the custom_data in bytes
 
-    //build BSON roles+data
+    /* build BSON roles+data. This works because we encoded the BSON in
+     * monary.py using bson.BSON.encode */
     memcpy(&roles_size, roles, sizeof(uint32_t));
     if (!bson_init_static(&roles_bson, roles, roles_size)) {
         monary_error(err, "failed to initialize raw BSON "
@@ -1506,6 +1507,10 @@ monary_insert(mongoc_collection_t * collection,
               mongoc_client_t * client,
               mongoc_write_concern_t * write_concern, bson_error_t * err)
 {
+
+#ifdef DEBUG
+    char* str;
+#endif
     bson_iter_t bsonit;
 
     bson_oid_t oid;
@@ -1600,8 +1605,7 @@ monary_insert(mongoc_collection_t * collection,
             }
             else {
                 DEBUG("Error message: %s", err->message);
-#ifndef NDEBUG
-                char* str;
+#ifdef DEBUG
                 str = bson_as_json(&reply, NULL);
                 DEBUG("Server reply: %s", str);
                 bson_free(str);
