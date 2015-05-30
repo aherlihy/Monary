@@ -618,14 +618,19 @@ class Monary(object):
            :rtype: list
         """
 
-        plain_query = get_plain_query(query)
+        # If the user is using the $query modifier, then use query itself.
+        if "$query" in query:
+            count_query =  get_plain_query(query["$query"])
+        else:
+            count_query = query
+
         full_query = get_full_query(query, sort, hint)
 
         if not do_count and limit > 0:
             count = limit
         else:
             # count() doesn't like $query/$orderby/$hint, so need plain query.
-            count = self.count(db, coll, plain_query)
+            count = self.count(db, coll, count_query)
 
         if count > limit > 0:
             count = limit

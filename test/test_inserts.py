@@ -166,6 +166,30 @@ class TestInserts(unittest.TestCase):
         with monary.Monary() as m:
             m.drop_collection("monary_test", "data")
 
+    def compare_results(self, actual, exp):
+        for data, expected in zip(actual, exp):
+            self.assertEqual(data.count(), expected.count())
+            self.assertEqual(NUM_TEST_RECORDS, len(data))
+            if "V" in str(data.dtype):
+                to_str = str
+                if PY3:
+                    to_str = bytes
+                # Keep masked entires as numpy "masked".
+                data = np.ma.masked_array(
+                    [to_str(data[d]) if not data.mask[d] else data[d]
+                     for d in range(len(data))], data.mask)
+                expected = np.ma.masked_array(
+                    [to_str(expected[e]) if not expected.mask[e] else
+                     expected[e] for e in range(len(expected))],
+                    expected.mask)
+            for i in range(NUM_TEST_RECORDS):
+                # If either data or expected is masked, ensure the other is too.
+                if data.mask[i] or expected.mask[i]:
+                    self.assertTrue(expected.mask[i])
+                    self.assertTrue(data.mask[i])
+                else:
+                    self.assertEqual(data[i], expected[i])
+
     def test_insert_and_retrieve_no_types(self):
         params = monary.MonaryParam.from_lists(
             self.TYPE_INFERABLE_ARRAYS + [self.seq],
@@ -182,9 +206,7 @@ class TestInserts(unittest.TestCase):
                                  "x6", "x7", "x8", "x9", "x10", "x11"],
                                 self.TYPE_INFERABLE_ARRAYS_TYPES,
                                 sort="sequence")
-            for data, expected in zip(retrieved, self.TYPE_INFERABLE_ARRAYS):
-                self.assertEqual(data.count(), expected.count())
-                self.assertTrue((data == expected).all())
+            self.compare_results(retrieved, self.TYPE_INFERABLE_ARRAYS)
 
             m.drop_collection("monary_test", "data")
 
@@ -208,24 +230,7 @@ class TestInserts(unittest.TestCase):
                                  "x6", "x7", "x8", "x9", "x10",
                                  "x11", "x12", "x13", "x14", "x15",
                                  "sequence"], types, sort="sequence")
-            for data, expected in zip(retrieved, arrays):
-                self.assertEqual(data.count(), expected.count())
-                if "V" in str(data.dtype):
-                    # Need to convert binary data.
-                    fun = str
-                    if PY3:
-                        fun = bytes
-                    data = [fun(data[i])
-                            for i in range(len(data))
-                            if not data.mask[i]]
-                    expected = [fun(expected[i])
-                                for i in range(len(expected))
-                                if not expected.mask[i]]
-                    # Make these into np.arrays so .all() still works.
-                    data = np.array([data == expected])
-                    expected = np.array([True])
-                self.assertTrue((data == expected).all())
-
+            self.compare_results(retrieved, arrays)
             m.drop_collection("monary_test", "data")
 
     def test_oid(self):
@@ -288,6 +293,8 @@ class TestInserts(unittest.TestCase):
                 self.assertTrue(False, "%r should not have been valid" % b)
             except ValueError:
                 pass
+        with monary.Monary() as m:
+            m.drop_collection("monary_test", "data")
 
     def test_nested_insert(self):
         squares = np.arange(NUM_TEST_RECORDS) ** 2
@@ -353,25 +360,34 @@ class TestInserts(unittest.TestCase):
                      "sequence"],
                     ["bool", "int8", "int16", "int32", "int64",
                      "float32", "float64", "string:10", "int64"]))
-
         with monary.Monary() as m:
             sizes = m.query("monary_test", "data", {}, ["a.b.c.d.e.f.g.h"],
                             ["size"])
             max_size = max(sizes[0])
-            ret = m.query("monary_test", "data", {}, ["a.b.c.d.e.f.g.h"],
+            ret = m.query("monary_test", "data",
+                          {"$query":{}, "$orderby":{"sequence":1}},
+                          ["a.b.c.d.e.f.g.h"],
                           ["bson:%d" % max_size])
-            self.assertEqual(len(ret[0]), NUM_TEST_RECORDS)
-            data = [monary.monary.mvoid_to_bson_dict(d) for d in ret[0]]
+            raw_data = ret[0]
+            self.assertEqual(len(raw_data), NUM_TEST_RECORDS)
+            data = np.ma.masked_array(
+                [monary.monary.mvoid_to_bson_dict(raw_data[d])
+                 if not raw_data.mask[d] else raw_data[d]
+                 for d in range(NUM_TEST_RECORDS)], raw_data.mask)
+
             for i in range(NUM_TEST_RECORDS):
-                for j in range(len(arrays)):
+                for j in range(len(arrays)-1):
                     key = "x%d" % (j + 1)
-                    if key in data[i].keys():
+                    # Make sure if either is masked, they both are.
+                    if key not in data[i] or arrays[j].mask[i]:
+                        self.assertTrue(key not in data[i])
+                        self.assertTrue(arrays[j].mask[i])
+                    else:
                         if PY3 and j == 7:
                             self.assertEqual(data[i][key],
                                              arrays[j][i].decode('utf-8'))
                         else:
                             self.assertEqual(data[i][key], arrays[j][i])
-
             m.drop_collection("monary_test", "data")
 
     def test_insert_bson(self):
@@ -453,6 +469,7 @@ class TestInserts(unittest.TestCase):
 
     def test_insert_errors(self):
         with monary.Monary() as m:
+            m.drop_collection("monary_test", "data")
             a = np.ma.masked_array([1, 3], [False] * 2, dtype="int8")
             b = np.ma.masked_array([1, 2, 3, 4], [False] * 4, dtype="int8")
             a_id = m.insert("monary_test",
@@ -483,8 +500,12 @@ class TestInserts(unittest.TestCase):
             ids = m.insert("monary_test", "data",
                            [monary.MonaryParam(nums, "_id")])
 
+
             self.assertEqual(len(ids), len(nums))
-            self.assertEqual(ids.count(), len(nums) - len(threes))
+            if NUM_TEST_RECORDS % 3 == 0:
+                self.assertEqual(ids.count(), len(nums) - len(threes) + 1)
+            else:
+                self.assertEqual(ids.count(), len(nums) - len(threes))
             # Everything that's a 'three' should be masked.
             self.assertTrue(ids.mask[::3].all())
             # Nothing that's not a 'three' should be masked.
