@@ -194,6 +194,8 @@ monary_destroy_collection(mongoc_collection_t * collection)
  * representation of the NumPy ma.array, which corresponds one-to-one to the
  * storage array. A value is masked if and only if an error occurs while
  * loading memory from MongoDB.
+ * @ndim the number of dimensions if the item is array
+ * @dims the lengths of each dimension
  */
 typedef struct monary_column_item {
     char *field;
@@ -201,6 +203,8 @@ typedef struct monary_column_item {
     unsigned int type_arg;
     void *storage;
     unsigned char *mask;
+//    unsigned int ndim;   // 0 by default, means "scalar" std type
+//    unsigned int* dims;  // null by default, or ptr to array of len "ndim"
 } monary_column_item;
 
 /**
@@ -308,7 +312,11 @@ monary_set_column_item(monary_column_data * coldata,
                        const char *field,
                        unsigned int type,
                        unsigned int type_arg,
-                       void *storage, unsigned char *mask, bson_error_t * err)
+                       void *storage,
+                       unsigned char *mask,
+                       unsigned int ndim,
+                       const unsigned int* dims,
+                       bson_error_t * err)
 {
     int len;
 

@@ -22,7 +22,7 @@ class TestExceptions(unittest.TestCase):
     def test_get_monary_numpy_type1(self):
         with self.assertRaisesRegexp(
                 ValueError,
-                "Too many parts in type"):
+                "known typename: '6'"):
             with monary.Monary() as m:
                 m.query("test", "collection", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["string:6:4"] * 5)
@@ -30,7 +30,7 @@ class TestExceptions(unittest.TestCase):
     def test_get_monary_numpy_type2(self):
         with self.assertRaisesRegexp(
                 ValueError,
-                "Unable to parse type argument"):
+                "unknown typename: 'x'"):
             with monary.Monary() as m:
                 m.query("test", "collection", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["string:x"] * 5)
@@ -38,7 +38,7 @@ class TestExceptions(unittest.TestCase):
     def test_get_monary_numpy_type3(self):
         with self.assertRaisesRegexp(
                 ValueError,
-                "Unknown typename"):
+                "unknown typename"):
             with monary.Monary() as m:
                 m.query("test", "collection", {},
                         ["x1", "x2", "x3", "x4", "x5"], ["junk"] * 5)

@@ -55,12 +55,16 @@ class MonaryParam(object):
 
         self.array, self.field, self.mtype = array, field, mtype
 
-        m_np_t = get_monary_numpy_type(self.mtype)
-        self.cmonary_type, self.cmonary_type_arg, self.numpy_type = m_np_t
+        (self.cmonary_type, self.cmonary_type_arg, self.numpy_type, self.ndim,
+         self.dims, self.mask_type) = get_monary_numpy_type(self.mtype)
+
+        if self.array.mask.dtype != self.mask_type:
+            raise ValueError("Wrong type specified for mask: got %r, expected"
+                             " %r" % (self.array.mask.dtype, self.mask_type))
 
         if self.array.data.dtype != self.numpy_type:
-            raise ValueError("Wrong type specified: given %r expected %r." %
-                             (self.array.data.dtype, self.numpy_type))
+            raise ValueError("Wrong type specified for array: got %r expected"
+                             " %r." % (self.array.data.dtype, self.numpy_type))
 
     @classmethod
     def from_lists(cls, data, fields, types=None):

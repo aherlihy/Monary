@@ -101,7 +101,7 @@ FUNCDEFS = [
     "monary_destroy_collection:P:0",
     "monary_alloc_column_data:UU:P",
     "monary_free_column_data:P:I",
-    "monary_set_column_item:PUSUUPPP:I",
+    "monary_set_column_item:PUSUUPPUP:I",
     "monary_query_count:PPP:L",
     "monary_init_query:PUUPPIP:P",
     "monary_init_aggregate:PPPP:P",
@@ -135,28 +135,28 @@ atexit.register(cmonary.monary_cleanup)
 # Table of type names and conversions between cmonary and numpy types.
 MONARY_TYPES = {
     # "common_name": (cmonary_type_code, numpy_type_object)
-    "id":        (1, numpy.dtype("<V12")),
-    "bool":      (2, numpy.bool),
-    "int8":      (3, numpy.int8),
-    "int16":     (4, numpy.int16),
-    "int32":     (5, numpy.int32),
-    "int64":     (6, numpy.int64),
-    "uint8":     (7, numpy.uint8),
-    "uint16":    (8, numpy.uint16),
-    "uint32":    (9, numpy.uint32),
-    "uint64":    (10, numpy.uint64),
-    "float32":   (11, numpy.float32),
-    "float64":   (12, numpy.float64),
-    "date":      (13, numpy.int64),
-    "timestamp": (14, numpy.uint64),
+    "id":        (1, "<V12"),
+    "bool":      (2, "bool"),
+    "int8":      (3, "int8"),
+    "int16":     (4, "int16"),
+    "int32":     (5, "int32"),
+    "int64":     (6, "int64"),
+    "uint8":     (7, "uint8"),
+    "uint16":    (8, "uint16"),
+    "uint32":    (9, "uint32"),
+    "uint64":    (10, "uint64"),
+    "float32":   (11, "float32"),
+    "float64":   (12, "float64"),
+    "date":      (13, "int64"),
+    "timestamp": (14, "uint64"),
     # Note, numpy strings do not need the null character.
     "string":    (15, "S"),
     # Raw data (void pointer).
     "binary":    (16, "<V"),
     "bson":      (17, "<V"),
-    "type":      (18, numpy.uint8),
-    "size":      (19, numpy.uint32),
-    "length":    (20, numpy.uint32),
+    "type":      (18, "uint8"),
+    "size":      (19, "uint32"),
+    "length":    (20, "uint32"),
 }
 
 
@@ -164,46 +164,82 @@ def get_monary_numpy_type(orig_typename):
     """Given a common typename, find the corresponding cmonary type number,
        type argument, and numpy type object (or code).
 
-       The input typename must be one of the keys found in the ``MONARY_TYPES``
-       dictionary.  These are common BSON type names such as ``id``, ``bool``,
-       ``int32``, ``float64``, ``date``, or ``string``.
-       If the type is ``string``,``binary``, or ``bson``, its name must be
+       The input typename must be either one of the keys in the ``MONARY_TYPES``
+       dictionary or "array:<dimensions>:<type>." <dimensions> must be a
+       colon-separated list of the dimensions of the array query. <type> must
+       be the type of the array, which are the same as for non-array queries.
+       The possible types consist of common BSON type names such as ``id``,
+       ``bool``,``int32``, ``float64``, ``date``, or ``string``.
+       If the type is ``string``, ``binary``, or ``bson``, its name must be
        followed by a ``:size`` suffix indicating the maximum number of bytes
        that will be used to store the representation.
 
+       A few examples:
+            "int32"
+            "string:7"
+            "array:1:2:int32"
+            "array:6:string:4"
+
        :param str orig_typename: a common type name with optional argument
                                  (for fields with a size)
-       :returns: (type_num, type_arg, numpy_type)
+       :returns: (type_num, type_arg, numpy_type, dims, ndim, mask_type)
        :rtype: tuple
     """
-    # Process any type_arg that might be included.
-    if ':' in orig_typename:
-        vals = orig_typename.split(':', 2)
-        if len(vals) > 2:
-            raise ValueError("Too many parts in type: %r" % orig_typename)
-        type_name, arg = vals
-        try:
-            type_arg = int(arg)
-        except ValueError:
-            raise ValueError("Unable to parse type argument in: %r"
-                             % orig_typename)
-    else:
+    # process any type_arg that might be included
+
+    if not orig_typename:
+        raise ValueError("cannot give empty type name")
+
+    dims = []
+    ndim = 0
+    vals = orig_typename.split(':')
+    mask_type = "bool"
+    lv = len(vals)
+    try:
+        type_arg = int(vals[-1])
+        last = lv - 2
+    except ValueError:
         type_arg = 0
-        type_name = orig_typename
+        last = lv - 1
+    if last < 0:
+        raise ValueError("misformatted type string: %s" % orig_typename)
+    type_name = vals[last]
 
     if type_name not in MONARY_TYPES:
-        raise ValueError("Unknown typename: %r" % type_name)
+        raise ValueError("unknown typename: %r" % type_name)
+    type_num, numpy_type = MONARY_TYPES[type_name]
+
     if type_name in ("string", "binary", "bson"):
         if type_arg == 0:
             raise ValueError("%r must have an explicit typearg with nonzero "
-                             "length (use 'string:20', for example)"
-                             % type_name)
-        type_num, numpy_type_code = MONARY_TYPES[type_name]
-        numpy_type = numpy.dtype("%s%i" % (numpy_type_code, type_arg))
+                             "length (use 'string:20' for example)" % type_name)
+        numpy_type += str(type_arg)
     else:
-        type_num, numpy_type = MONARY_TYPES[type_name]
-    return type_num, type_arg, numpy_type
+        if type_arg != 0:
+            raise ValueError("%r does not take a typearg" % type_name)
 
+    if vals[0] == 'array':
+        for v in vals[1:last]:
+            try:
+                num = int(v)
+            except ValueError:
+                raise ValueError("invalid dimension %r, must be integer" % v)
+            dims.append(num)
+            ndim += 1
+
+        if ndim == 0:
+            raise ValueError("arrays must have at least one dimension")
+        elif ndim >= 100:
+            raise ValueError("arrays cannot have a depth of more than 100")
+        elif ndim > 1:
+            d_str = ','.join([str(d) for d in dims])
+            numpy_type = "(%s)%s" % (d_str, numpy_type)
+            mask_type = "(%s)bool" % d_str
+        else:
+            d_str = str(dims)
+            numpy_type = "%s%s" % (dims[0], numpy_type)
+            mask_type = "%sbool" % dims[0]
+    return type_num, type_arg, numpy_type, ndim, dims, mask_type
 
 def make_bson(obj):
     """Given a Python (JSON compatible) dictionary, returns a BSON string.
@@ -478,10 +514,15 @@ class Monary(object):
                 raise ValueError("Length of field name %s exceeds "
                                  "maximum of %d" % (field, MAX_COLUMNS))
 
-            c_type, c_type_arg, numpy_type = get_monary_numpy_type(typename)
+            (c_type, c_type_arg, numpy_type, ndim, dims,
+             mask_type) = get_monary_numpy_type(typename)
+
+            # convert the dims array into a C array of unsigned integers
+            dims_p = (ctypes.c_uint * len(dims))(*dims)
+
 
             data = numpy.zeros([count], dtype=numpy_type)
-            mask = numpy.ones([count], dtype=bool)
+            mask = numpy.ones([count], dtype=mask_type)
             storage = numpy.ma.masked_array(data, mask)
             colarrays.append(storage)
 
@@ -495,6 +536,8 @@ class Monary(object):
                     c_type_arg,
                     data_p,
                     mask_p,
+                    ndim,
+                    dims_p,
                     ctypes.byref(err)) < 0:
                 raise MonaryError(err.message)
 
@@ -764,6 +807,7 @@ class Monary(object):
                 data_p = param.array.data.ctypes.data_as(ctypes.c_void_p)
                 mask_p = param.array.mask.ctypes.data_as(ctypes.c_void_p)
 
+                dims_p = (ctypes.c_uint * len(param.dims))(*param.dims)
                 if cmonary.monary_set_column_item(
                         coldata,
                         i,
@@ -772,6 +816,8 @@ class Monary(object):
                         param.cmonary_type_arg,
                         data_p,
                         mask_p,
+                        param.ndim,
+                        dims_p,
                         ctypes.byref(err)) < 0:
                     raise MonaryError(err.message)
 
@@ -783,12 +829,20 @@ class Monary(object):
                 ids = numpy.copy(params[0].array)
                 c_type = params[0].cmonary_type
                 c_type_arg = params[0].cmonary_type_arg
+                ndim = params[0].ndim
+                dims = params[0].dims
+                mask_type = params[0].mask_type
             else:
                 # Allocate a single column to return the generated ObjectIds.
-                c_type, c_type_arg, numpy_type = get_monary_numpy_type("id")
+                (c_type, c_type_arg, numpy_type, ndim, dims,
+                 mask_type) = get_monary_numpy_type("id")
                 ids = numpy.zeros(len(params[0]), dtype=numpy_type)
 
-            mask = numpy.ones(len(params[0]))
+
+            # convert the dims array into a C array of unsigned integers
+            #TODO: what to put for dims?
+            dims_p = (ctypes.c_uint * len(dims))(*dims)
+            mask = numpy.ones(len(params[0]), dtype=mask_type)
             ids = numpy.ma.masked_array(ids, mask)
             if cmonary.monary_set_column_item(
                     id_data,
@@ -798,6 +852,8 @@ class Monary(object):
                     c_type_arg,
                     ids.data.ctypes.data_as(ctypes.c_void_p),
                     ids.mask.ctypes.data_as(ctypes.c_void_p),
+                    ndim,
+                    dims_p,
                     ctypes.byref(err)) < 0:
                 raise MonaryError(err.message)
 
