@@ -203,8 +203,8 @@ typedef struct monary_column_item {
     unsigned int type_arg;
     void *storage;
     unsigned char *mask;
-//    unsigned int ndim;   // 0 by default, means "scalar" std type
-//    unsigned int* dims;  // null by default, or ptr to array of len "ndim"
+    unsigned int ndim;   // 0 by default, means "scalar" std type
+    unsigned int* dims;  // null by default, or ptr to array of len "ndim"
 } monary_column_item;
 
 /**
@@ -278,11 +278,17 @@ monary_free_column_data(monary_column_data * coldata)
         if (col->field != NULL) {
             free(col->field);
         }
+        if (col->dims != NULL) {
+            free(col->dims);
+        }
     }
     free(coldata->columns);
     free(coldata);
     return 1;
 }
+
+int monary_load_item(const bson_iter_t* bsonit,monary_column_item* citem,
+                     int offset);
 
 /**
  * Sets the field value for a particular column and item. This is referenced by
@@ -302,6 +308,9 @@ monary_free_column_data(monary_column_data * coldata)
  * @param mask A pointer to the new masked array, which cannot be NULL. It is a
  * programming error to have a masked array different in length from the
  * storage array.
+ * @param ndim The number of dimensions if the item is an array.
+ * @param dims A list of lengths where the value at position i is the length of
+ * the array at dimension i if the item is an array.
  * @param err bson_error_t that holds error information in case of failure
  *
  * @return 1 if the modification was performed successfully; -1 otherwise.
@@ -318,7 +327,7 @@ monary_set_column_item(monary_column_data * coldata,
                        const unsigned int* dims,
                        bson_error_t * err)
 {
-    int len;
+    size_t len;
 
     monary_column_item *col;
 
@@ -354,6 +363,10 @@ monary_set_column_item(monary_column_data * coldata,
                      "monary_set_column_item");
         return -1;
     }
+    if (ndim > MONARY_MAX_RECURSION) {
+        monary_error(err, "array is more than the max dimensions, 100");
+        return -1;
+    }
 
     col = coldata->columns + colnum;
 
@@ -364,13 +377,79 @@ monary_set_column_item(monary_column_data * coldata,
     col->type_arg = type_arg;
     col->storage = storage;
     col->mask = mask;
+    col->dims = malloc(ndim*sizeof(unsigned int));
+    memcpy(col->dims, dims, ndim*sizeof(unsigned int));
+    col->ndim = ndim;
 
     return 1;
 }
 
+/*
+ * Loads a BSON array value into a numpy array within a monary_column_item.
+ * The function iterates through the array, either recurring if there is a
+ * sub-array or loading the value found by calling monary_load_item.
+ *
+ * In order to find the address of each item in the array, this function uses
+ * a coordinates array which corresponds to the item's index in each dimension.
+ * Monary only supports row-major order (which is the numpy default) so the
+ * position in memory of an item can be calculated by multiplying each
+ * coordinate by the stride for that dimension. The strides are stored in
+ * citem->dims.
+
+ * For more info on the internal memory layout of a numpy ndarray:
+ * http://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html#internal-memory-layout-of-an-ndarray
+ *
+ * @param curr_it The BSON iterator for the current array.
+ * @param citem The monary_column_item where the data will be copied into.
+ * @param curr_dim The dimension of the array currently being iterated through.
+ * @param coordinates The location of the current item being loaded.
+ *
+ * @return 1 if the load was successful, 0 otherwise.
+ */
+int monary_load_array_value(const bson_iter_t* curr_it,
+               monary_column_item* citem,
+               int curr_dim,
+               int* coordinates) {
+    if( BSON_ITER_HOLDS_ARRAY( curr_it )) {
+
+        bson_iter_t sub_it;
+        bson_iter_recurse(curr_it, &sub_it);
+        int item = 0;
+        bool success;
+
+        while( bson_iter_next(&sub_it) ) {
+        // TODO: add check so that if dtype doesn't match data, err
+            if (BSON_ITER_HOLDS_ARRAY( &sub_it ) && curr_dim+1<citem->ndim) {
+                coordinates[curr_dim+1] = item;
+                monary_load_array_value(&sub_it, citem, curr_dim+1,
+                                        coordinates);
+            }
+            else {
+                int length = 1;
+                int offset = 0;
+
+                for(int i=0;i<citem->ndim;i++) {
+                    length *= citem->dims[citem->ndim-1-i];
+                    offset += coordinates[citem->ndim-1-i]*length;
+                }
+                offset += coordinates[citem->ndim]*length; // idx
+                success = !monary_load_item(&sub_it, citem, offset + item);
+                memcpy(((bool*) citem->mask) + offset + item, &success,
+                       sizeof(bool));
+            }
+            item++;
+        }
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
 int
 monary_load_objectid_value(const bson_iter_t * bsonit,
-                           monary_column_item * citem, int idx)
+                           monary_column_item * citem,
+                           int offset)
 {
     const bson_oid_t *oid;
 
@@ -378,7 +457,7 @@ monary_load_objectid_value(const bson_iter_t * bsonit,
 
     if (BSON_ITER_HOLDS_OID(bsonit)) {
         oid = bson_iter_oid(bsonit);
-        dest = ((uint8_t *) citem->storage) + (idx * sizeof(bson_oid_t));
+        dest = ((uint8_t *) citem->storage) + (offset * sizeof(bson_oid_t));
         memcpy(dest, oid->bytes, sizeof(bson_oid_t));
         return 1;
     }
@@ -389,37 +468,38 @@ monary_load_objectid_value(const bson_iter_t * bsonit,
 
 int
 monary_load_bool_value(const bson_iter_t * bsonit,
-                       monary_column_item * citem, int idx)
+                       monary_column_item * citem,
+                       int offset)
 {
     bool value;
 
     value = bson_iter_bool(bsonit);
-    memcpy(((bool *) citem->storage) + idx, &value, sizeof(bool));
+    memcpy(((bool *) citem->storage) + offset, &value, sizeof(bool));
     return 1;
 }
 
 #define MONARY_DEFINE_FLOAT_LOADER(FUNCNAME, NUMTYPE)                        \
 int FUNCNAME (const bson_iter_t* bsonit,                                     \
               monary_column_item* citem,                                     \
-              int idx)                                                       \
+              int offset)                                                    \
 {                                                                            \
     NUMTYPE value;                                                           \
     if (BSON_ITER_HOLDS_DOUBLE(bsonit)) {                                    \
         value = (NUMTYPE) bson_iter_double(bsonit);                          \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else if (BSON_ITER_HOLDS_INT32(bsonit)) {                              \
         value = (NUMTYPE) bson_iter_int32(bsonit);                           \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else if (BSON_ITER_HOLDS_INT64(bsonit)) {                              \
         value = (NUMTYPE) bson_iter_int64(bsonit);                           \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else {                                                                 \
         return 0;                                                            \
     }                                                                        \
-}
+}                                                                            \
 
 // Floating point
 MONARY_DEFINE_FLOAT_LOADER(monary_load_float32_value, float)
@@ -428,20 +508,20 @@ MONARY_DEFINE_FLOAT_LOADER(monary_load_float64_value, double)
 #define MONARY_DEFINE_INT_LOADER(FUNCNAME, NUMTYPE)                          \
 int FUNCNAME (const bson_iter_t* bsonit,                                     \
               monary_column_item* citem,                                     \
-              int idx)                                                       \
+              int offset)                                                    \
 {                                                                            \
     NUMTYPE value;                                                           \
     if (BSON_ITER_HOLDS_INT32(bsonit)) {                                     \
         value = (NUMTYPE) bson_iter_int32(bsonit);                           \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else if (BSON_ITER_HOLDS_INT64(bsonit)) {                              \
         value = (NUMTYPE) bson_iter_int64(bsonit);                           \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else if (BSON_ITER_HOLDS_DOUBLE(bsonit)) {                             \
         value = (NUMTYPE) bson_iter_double(bsonit);                          \
-        memcpy(((NUMTYPE*) citem->storage) + idx, &value, sizeof(NUMTYPE));  \
+        memcpy(((NUMTYPE*) citem->storage) + offset, &value, sizeof(NUMTYPE));\
         return 1;                                                            \
     } else {                                                                 \
         return 0;                                                            \
@@ -459,13 +539,14 @@ MONARY_DEFINE_INT_LOADER(monary_load_uint32_value, uint32_t)
 MONARY_DEFINE_INT_LOADER(monary_load_uint64_value, uint64_t)
 
 int monary_load_datetime_value(const bson_iter_t * bsonit,
-                                    monary_column_item * citem, int idx)
+                                    monary_column_item * citem,
+                                    int offset)
 {
     int64_t value;
 
     if (BSON_ITER_HOLDS_DATE_TIME(bsonit)) {
         value = bson_iter_date_time(bsonit);
-        memcpy(((int64_t *) citem->storage) + idx, &value, sizeof(int64_t));
+        memcpy(((int64_t *) citem->storage) + offset, &value, sizeof(int64_t));
         return 1;
     }
     else {
@@ -475,7 +556,8 @@ int monary_load_datetime_value(const bson_iter_t * bsonit,
 
 int
 monary_load_timestamp_value(const bson_iter_t * bsonit,
-                            monary_column_item * citem, int idx)
+                            monary_column_item * citem,
+                            int offset)
 {
     uint32_t timestamp;
 
@@ -483,7 +565,7 @@ monary_load_timestamp_value(const bson_iter_t * bsonit,
 
     char *dest;                 // Would be void*, but Windows compilers complain
 
-    dest = (char *)citem->storage + idx * sizeof(int64_t);
+    dest = (char *)citem->storage + offset * sizeof(int64_t);
     if (BSON_ITER_HOLDS_TIMESTAMP(bsonit)) {
         bson_iter_timestamp(bsonit, &timestamp, &increment);
         memcpy(dest, &timestamp, sizeof(int32_t));
@@ -497,7 +579,8 @@ monary_load_timestamp_value(const bson_iter_t * bsonit,
 
 int
 monary_load_string_value(const bson_iter_t * bsonit,
-                         monary_column_item * citem, int idx)
+                         monary_column_item * citem,
+                         int offset)
 {
     char *dest;                 // Pointer to the final location of the array in mem
 
@@ -513,7 +596,7 @@ monary_load_string_value(const bson_iter_t * bsonit,
         if (stringlen > size) {
             stringlen = size;
         }
-        dest = ((char *)citem->storage) + (idx * size);
+        dest = ((char *)citem->storage) + (offset * size);
         // Note: numpy strings need not end in \0
         memcpy(dest, src, stringlen);
         return 1;
@@ -525,7 +608,8 @@ monary_load_string_value(const bson_iter_t * bsonit,
 
 int
 monary_load_binary_value(const bson_iter_t * bsonit,
-                         monary_column_item * citem, int idx)
+                         monary_column_item * citem,
+                         int offset)
 {
     bson_subtype_t subtype;
 
@@ -547,7 +631,7 @@ monary_load_binary_value(const bson_iter_t * bsonit,
             binary_len = size;
         }
 
-        dest = ((uint8_t *) citem->storage) + (idx * size);
+        dest = ((uint8_t *) citem->storage) + (offset * size);
         memcpy(dest, binary, binary_len);
         return 1;
     }
@@ -558,7 +642,8 @@ monary_load_binary_value(const bson_iter_t * bsonit,
 
 int
 monary_load_document_value(const bson_iter_t * bsonit,
-                           monary_column_item * citem, int idx)
+                           monary_column_item * citem,
+                           int offset)
 {
     uint32_t document_len;      // The length of document in bytes.
 
@@ -572,7 +657,7 @@ monary_load_document_value(const bson_iter_t * bsonit,
             document_len = citem->type_arg;
         }
 
-        dest = ((uint8_t *) citem->storage) + (idx * document_len);
+        dest = ((uint8_t *) citem->storage) + (offset * document_len);
         memcpy(dest, document, document_len);
         return 1;
     }
@@ -583,21 +668,23 @@ monary_load_document_value(const bson_iter_t * bsonit,
 
 int
 monary_load_type_value(const bson_iter_t * bsonit,
-                       monary_column_item * citem, int idx)
+                       monary_column_item * citem,
+                       int offset)
 {
     uint8_t type;
 
     uint8_t *dest;
 
     type = (uint8_t) bson_iter_type(bsonit);
-    dest = ((uint8_t *) citem->storage) + idx;
+    dest = ((uint8_t *) citem->storage) + offset;
     memcpy(dest, &type, sizeof(uint8_t));
     return 1;
 }
 
 int
 monary_load_size_value(const bson_iter_t * bsonit,
-                       monary_column_item * citem, int idx)
+                       monary_column_item * citem,
+                       int offset)
 {
     bson_type_t type;
 
@@ -625,14 +712,15 @@ monary_load_size_value(const bson_iter_t * bsonit,
     default:
         return 0;
     }
-    dest = ((uint32_t *) citem->storage) + idx;
+    dest = ((uint32_t *) citem->storage) + offset;
     memcpy(dest, &size, sizeof(uint32_t));
     return 1;
 }
 
 int
 monary_load_length_value(const bson_iter_t * bsonit,
-                         monary_column_item * citem, int idx)
+                         monary_column_item * citem,
+                         int offset)
 {
     bson_type_t type;
 
@@ -667,7 +755,7 @@ monary_load_length_value(const bson_iter_t * bsonit,
         return 0;
     }
 
-    dest = ((uint32_t *) citem->storage) + idx;
+    dest = ((uint32_t *) citem->storage) + offset;
     memcpy(dest, &length, sizeof(uint32_t));
     return 1;
 }
@@ -767,12 +855,20 @@ monary_bson_to_arrays(monary_column_data * coldata,
         // Use the iterator to find the field we want
         bson_iter_init(&bsonit, bson_data);
         if (bson_iter_find_descendant(&bsonit, citem->field, &descendant)) {
-            success = monary_load_item(&descendant, citem, row);
-        }
-
-        // Record success in mask
-        if (citem->mask != NULL) {
-            citem->mask[row] = !success;
+            if (citem->ndim > 0) {
+                int coordinates[MONARY_MAX_RECURSION];
+                memset(coordinates, 0, sizeof(int)*MONARY_MAX_RECURSION);
+                coordinates[citem->ndim] = row;
+                // monary_load_array_value will set the mask itself
+                success = monary_load_array_value(&descendant, citem, 0,
+                                                  coordinates);
+            } else {
+                success = monary_load_item(&descendant, citem, row);
+                // Record success in mask
+                if (citem->mask != NULL) {
+                    citem->mask[row] = !success;
+                }
+            }
         }
         if (!success) {
             masked++;
@@ -1127,7 +1223,7 @@ monary_destroy_write_concern(mongoc_write_concern_t * write_concern)
 #define MONARY_SET_BSON_VALUE(TYPENAME, BTYPENAME, VKEY, STORED_TYPE, CAST_TYPE) \
 case TYPENAME:                                                                   \
 val->value_type = BTYPENAME;                                                     \
-val->value.VKEY = (CAST_TYPE) *(((STORED_TYPE *) citem->storage) + idx);         \
+val->value.VKEY = (CAST_TYPE) *(((STORED_TYPE *) citem->storage) + offset);      \
 break;
 
 /**
@@ -1135,17 +1231,18 @@ break;
  *
  * @param val A pointer to the bson_value_t to populate.
  * @param citem The monary column that contains the value to use
- * @param idx The index of the storage to use.
+ * @param offset The index of the storage to use.
  */
 void
 monary_make_bson_value_t(bson_value_t * val,
-                         monary_column_item * citem, int idx)
+                         monary_column_item * citem,
+                         int offset)
 {
     uint32_t len;
 
     uint8_t *storage = ((uint8_t *) citem->storage);
 
-    uint8_t *current_val = storage + (idx * citem->type_arg);
+    uint8_t *current_val = storage + (offset * citem->type_arg);
 
     val->padding = 0;
     switch (citem->type) {
@@ -1177,14 +1274,14 @@ monary_make_bson_value_t(bson_value_t * val,
         case TYPE_OBJECTID:val->value_type = BSON_TYPE_OID;
 
         bson_oid_init_from_data(&(val->value.v_oid),
-                                storage + (idx * sizeof(bson_oid_t)));
+                                storage + (offset * sizeof(bson_oid_t)));
         break;
     case TYPE_TIMESTAMP:
         val->value_type = BSON_TYPE_TIMESTAMP;
         memcpy(&val->value.v_timestamp.timestamp,
-               ((uint32_t *) citem->storage) + (2 * idx), sizeof(uint32_t));
+               ((uint32_t *) citem->storage) + (2 * offset), sizeof(uint32_t));
         memcpy(&val->value.v_timestamp.increment,
-               ((uint32_t *) citem->storage) + (2 * idx + 1),
+               ((uint32_t *) citem->storage) + (2 * offset + 1),
                sizeof(uint32_t));
         break;
     case TYPE_STRING:
@@ -1203,11 +1300,11 @@ monary_make_bson_value_t(bson_value_t * val,
         len = BSON_UINT32_FROM_LE(*(uint32_t *) current_val);
         if (len > citem->type_arg) {
             DEBUG("Error: bson length greater than array width in "
-                  "row %d", idx);
+                  "row %d", offset);
             break;
         }
         if (len < 5) {
-            DEBUG("Error: poorly formatted bson in row %d", idx);
+            DEBUG("Error: poorly formatted bson in row %d", offset);
             break;
         }
         val->value_type = BSON_TYPE_DOCUMENT;
@@ -1373,13 +1470,9 @@ monary_insert(mongoc_collection_t * collection,
 
     bson_t reply;
 
-    monary_column_item *citem;
-
     mongoc_bulk_operation_t *bulk_op;
 
     bool id_provided;
-
-    char *str;
 
     int data_len;
 
@@ -1464,9 +1557,7 @@ monary_insert(mongoc_collection_t * collection,
             else {
                 DEBUG("Error message: %s", err->message);
 #ifndef NDEBUG
-                str = bson_as_json(&reply, NULL);
-                DEBUG("Server reply: %s", str);
-                bson_free(str);
+                DEBUG("Server reply: %s", bson_as_json(&reply, NULL);
 #endif
                 // Mask all of the values that failed.
                 if (bson_iter_init_find(&bsonit, &reply, "writeErrors")) {
