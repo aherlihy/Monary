@@ -57,7 +57,7 @@ We need the data itself to be in numpy's masked_array type::
 
 Now we can create a ``MonaryParam``::
 
-    >>> types = ["bson:%d"%max, "string:14", "string:3"]
+    >>> types = ["bson:%d" % max_length, "string:14", "string:3"]
     >>> fields = ["scores", "student_id", "student_name"]
     >>> values = [scores_ma, ids_ma, names_ma]
     >>> params = monary.MonaryParam.from_lists(values, fields, types)
