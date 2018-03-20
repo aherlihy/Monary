@@ -32,7 +32,7 @@ explicitly::
 
 Monary can also accept MongoDB URI strings::
 
-    >>> client = Monary("mongodb://me@password:test.example.net:2500/database?replicaSet=test&connectTimeoutMS=300000")
+    >>> client = Monary("mongodb://me:password@test.example.net:2500/database?replicaSet=test&connectTimeoutMS=300000")
 
 .. seealso::
 
